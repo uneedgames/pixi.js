@@ -4,8 +4,6 @@ import EventEmitter from 'eventemitter3';
 // Internal event used by composed emitter
 const TICK = 'tick';
 
-const { TARGET_FPMS } = settings;
-
 /**
  * A Ticker class that runs an update loop that other objects listen to.
  * This class is composed around an EventEmitter object to add listeners
@@ -74,7 +72,7 @@ export default class Ticker
          * @member {number}
          * @default 16.66
          */
-        this.elapsedMS = 1 / TARGET_FPMS; // default to target frame time
+        this.elapsedMS = 1 / settings.TARGET_FPMS;
 
         /**
          * The last time {@link PIXI.ticker.Ticker#update} was invoked.
@@ -320,7 +318,7 @@ export default class Ticker
                 elapsedMS = this._maxElapsedMS;
             }
 
-            this.deltaTime = elapsedMS * TARGET_FPMS * this.speed;
+            this.deltaTime = elapsedMS * settings.TARGET_FPMS * this.speed;
 
             // Invoke listeners added to internal emitter
             this._emitter.emit(TICK, this.deltaTime);
@@ -367,7 +365,7 @@ export default class Ticker
     set minFPS(fps) // eslint-disable-line require-jsdoc
     {
         // Clamp: 0 to TARGET_FPMS
-        const minFPMS = Math.min(Math.max(0, fps) / 1000, TARGET_FPMS);
+        const minFPMS = Math.min(Math.max(0, fps) / 1000, settings.TARGET_FPMS);
 
         this._maxElapsedMS = 1 / minFPMS;
     }
