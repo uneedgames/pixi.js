@@ -1503,6 +1503,7 @@ export default class InteractionManager extends EventEmitter
         }
         else
         {
+            event.isNormalized = true;
             normalizedEvents.push(event);
         }
 
