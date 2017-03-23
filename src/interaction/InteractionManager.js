@@ -891,7 +891,7 @@ export default class InteractionManager extends EventEmitter
      * @private
      * @param {PointerEvent} originalEvent - The DOM event of a pointer button being pressed down
      */
-    onPointerDown(originalEvent)
+    onPointerDown(originalEvent)// eslint-disable-line consistent-return
     {
         const events = this.normalizeToPointerData(originalEvent);
 
@@ -903,7 +903,7 @@ export default class InteractionManager extends EventEmitter
 
         // Guaranteed that there will be at least one event in events, and all events must have the same pointer type
 
-        if (this.autoPreventDefault && events[0].isNormalized)
+        if (this.autoPreventDefault)
         {
             originalEvent.preventDefault();
         }
@@ -933,6 +933,11 @@ export default class InteractionManager extends EventEmitter
 
                 this.emit(isRightButton ? 'rightdown' : 'mousedown', this.eventData);
             }
+        }
+
+        if (this.autoPreventDefault)
+        {
+            return false;
         }
     }
 
