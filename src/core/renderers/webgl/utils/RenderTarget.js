@@ -3,6 +3,8 @@ import { SCALE_MODES } from '../../../const';
 import settings from '../../../settings';
 import { GLFramebuffer } from 'pixi-gl-core';
 
+const { RESOLUTION, SCALE_MODE } = settings;
+
 /**
  * @class
  * @memberof PIXI
@@ -64,7 +66,7 @@ export default class RenderTarget
          * @member {number}
          * @default 1
          */
-        this.resolution = resolution || settings.RESOLUTION;
+        this.resolution = resolution || RESOLUTION;
 
         /**
          * The projection matrix
@@ -124,7 +126,7 @@ export default class RenderTarget
          * @default PIXI.settings.SCALE_MODE
          * @see PIXI.SCALE_MODES
          */
-        this.scaleMode = scaleMode !== undefined ? scaleMode : settings.SCALE_MODE;
+        this.scaleMode = scaleMode !== undefined ? scaleMode : SCALE_MODE;
 
         /**
          * Whether this object is the root element or not

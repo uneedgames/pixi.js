@@ -7,6 +7,8 @@ import EventEmitter from 'eventemitter3';
 import determineCrossOrigin from '../utils/determineCrossOrigin';
 import bitTwiddle from 'bit-twiddle';
 
+const { RESOLUTION, MIPMAP_TEXTURES, SCALE_MODE, WRAP_MODE } = settings;
+
 /**
  * A texture stores the information that represents an image. All textures have a base texture.
  *
@@ -35,7 +37,7 @@ export default class BaseTexture extends EventEmitter
          * @member {number}
          * @default 1
          */
-        this.resolution = resolution || settings.RESOLUTION;
+        this.resolution = resolution || RESOLUTION;
 
         /**
          * The width of the base texture set when the image has loaded
@@ -77,7 +79,7 @@ export default class BaseTexture extends EventEmitter
          * @default PIXI.settings.SCALE_MODE
          * @see PIXI.SCALE_MODES
          */
-        this.scaleMode = scaleMode !== undefined ? scaleMode : settings.SCALE_MODE;
+        this.scaleMode = scaleMode !== undefined ? scaleMode : SCALE_MODE;
 
         /**
          * Set to true once the base texture has successfully loaded.
@@ -174,7 +176,7 @@ export default class BaseTexture extends EventEmitter
          * @member {boolean}
          * @see PIXI.MIPMAP_TEXTURES
          */
-        this.mipmap = settings.MIPMAP_TEXTURES;
+        this.mipmap = MIPMAP_TEXTURES;
 
         /**
          *
@@ -183,7 +185,7 @@ export default class BaseTexture extends EventEmitter
          * @member {number}
          * @see PIXI.WRAP_MODES
          */
-        this.wrapMode = settings.WRAP_MODE;
+        this.wrapMode = WRAP_MODE;
 
         /**
          * A map of renderer IDs to webgl textures
