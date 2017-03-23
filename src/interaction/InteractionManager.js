@@ -890,6 +890,7 @@ export default class InteractionManager extends EventEmitter
      *
      * @private
      * @param {PointerEvent} originalEvent - The DOM event of a pointer button being pressed down
+     * @returns {boolean} might return false cause defaults
      */
     onPointerDown(originalEvent)// eslint-disable-line consistent-return
     {
