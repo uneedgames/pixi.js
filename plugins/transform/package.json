@@ -1,0 +1,22 @@
+{
+  "name": "@fae/transform",
+  "version": "5.0.0",
+  "description": "Adds support for object transform matrices.",
+  
+  "license": "MIT",
+  "main": "lib/index.js",
+  "homepage": "http://pixijs.com/",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/pixijs/pixi.js.git"
+  },
+  "bugs": {
+    "url": "https://github.com/pixijs/pixi.js/issues"
+  },
+  "files": [
+    "lib/"
+  ],
+  "dependencies": {
+    "@pixi/core": "^5.0.0"
+  }
+}

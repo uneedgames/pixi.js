@@ -5,76 +5,76 @@ export default class FrameBuffer
 {
     constructor(width, height)
     {
-    	this.width = width || 100;
-    	this.height = height || 100;
+        this.width = width || 100;
+        this.height = height || 100;
 
-    	this.stencil = false;
+        this.stencil = false;
         this.depth = false;
 
         this.dirtyId = 0;
         this.dirtyFormat = 0;
-    	this.dirtySize = 0;
+        this.dirtySize = 0;
 
-    	this.depthTexture = null;
-    	this.colorTextures = [];
+        this.depthTexture = null;
+        this.colorTextures = [];
 
-    	this.glFrameBuffers = {};
+        this.glFrameBuffers = {};
     }
 
     get colorTexture()
     {
-    	return this.colorTextures[0];
+        return this.colorTextures[0];
     }
 
     addColorTexture(index, texture)
     {
         // TODO add some validation to the texture - same width / height etc?
-    	this.colorTextures[index || 0] = texture || new Texture(null, 0, 1, this.width, this.height);// || new Texture();
+        this.colorTextures[index || 0] = texture || new Texture(null, 0, 1, this.width, this.height);// || new Texture();
 
         this.dirtyId++;
-    	this.dirtyFormat++;
+        this.dirtyFormat++;
 
-    	return this;
+        return this;
     }
 
 
     addDepthTexture(texture)
     {
-    	this.depthTexture = texture || new Texture(null, 0, 1, this.width, this.height, FORMATS.DEPTH_COMPONENT, TYPES.UNSIGNED_SHORT);//UNSIGNED_SHORT;
+        this.depthTexture = texture || new Texture(null, 0, 1, this.width, this.height, FORMATS.DEPTH_COMPONENT, TYPES.UNSIGNED_SHORT);//UNSIGNED_SHORT;
 
         this.dirtyId++;
         this.dirtyFormat++;
-    	return this;
+        return this;
     }
 
     enableDepth()
     {
-    	this.depth = true;
+        this.depth = true;
 
         this.dirtyId++;
-    	this.dirtyFormat++;
+        this.dirtyFormat++;
 
-    	return this;
+        return this;
     }
 
     enableStencil()
     {
-    	this.stencil = true;
+        this.stencil = true;
 
         this.dirtyId++;
-    	this.dirtyFormat++;
+        this.dirtyFormat++;
 
-    	return this;
+        return this;
     }
 
     resize(width, height)
     {
         if(width === this.width && height === this.height)return;
 
-    	this.width = width;
-    	this.height = height;
+        this.width = width;
+        this.height = height;
 
-    	this.dirtyId++;
+        this.dirtyId++;
         this.dirtySize++;
 
         for (var i = 0; i < this.colorTextures.length; i++) {

@@ -4,7 +4,7 @@ export default class TextureResource
 {
     constructor(source)
     {
-    	this.source = source;
+        this.source = source;
 
         this.loaded = false; // TODO rename to ready?
 

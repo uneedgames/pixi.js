@@ -1,9 +1,11 @@
+/** @namespace data */
+
 /**
  * String of the current PIXI version.
  *
  * @static
  * @constant
- * @memberof PIXI
+ * @memberof data
  * @name VERSION
  * @type {string}
  */
@@ -14,7 +16,7 @@ export const VERSION = __VERSION__;
  *
  * @static
  * @constant
- * @memberof PIXI
+ * @memberof data
  * @type {number}
  */
 export const PI_2 = Math.PI * 2;
@@ -24,7 +26,7 @@ export const PI_2 = Math.PI * 2;
  *
  * @static
  * @constant
- * @memberof PIXI
+ * @memberof data
  * @type {number}
  */
 export const RAD_TO_DEG = 180 / Math.PI;
@@ -34,7 +36,7 @@ export const RAD_TO_DEG = 180 / Math.PI;
  *
  * @static
  * @constant
- * @memberof PIXI
+ * @memberof data
  * @type {number}
  */
 export const DEG_TO_RAD = Math.PI / 180;
@@ -44,7 +46,7 @@ export const DEG_TO_RAD = Math.PI / 180;
  *
  * @static
  * @constant
- * @memberof PIXI
+ * @memberof data
  * @name RENDERER_TYPE
  * @type {object}
  * @property {number} UNKNOWN - Unknown render type.
@@ -65,7 +67,7 @@ export const RENDERER_TYPE = {
  *
  * @static
  * @constant
- * @memberof PIXI
+ * @memberof data
  * @name BLEND_MODES
  * @type {object}
  * @property {number} NORMAL
@@ -113,7 +115,7 @@ export const BLEND_MODES = {
  *
  * @static
  * @constant
- * @memberof PIXI
+ * @memberof data
  * @name DRAW_MODES
  * @type {object}
  * @property {number} POINTS
@@ -134,6 +136,13 @@ export const DRAW_MODES = {
     TRIANGLE_FAN:   6,
 };
 
+/**
+ * @static
+ * @constant
+ * @memberof data
+ * @name FORMATS
+ * @type {object}
+ */
 export const FORMATS = {
     RGBA:             6408,
     RGB:              6407,
@@ -144,27 +153,41 @@ export const FORMATS = {
     DEPTH_STENCIL:    34041,
 };
 
+/**
+ * @static
+ * @constant
+ * @memberof data
+ * @name TARGETS
+ * @type {object}
+ */
 export const TARGETS = {
-    TEXTURE_2D:3553,
-    TEXTURE_CUBE_MAP:34067,
-    TEXTURE_2D_ARRAY:35866,
-    TEXTURE_CUBE_MAP_POSITIVE_X:34069,
-    TEXTURE_CUBE_MAP_NEGATIVE_X:34070,
-    TEXTURE_CUBE_MAP_POSITIVE_Y:34071,
-    TEXTURE_CUBE_MAP_NEGATIVE_Y:34072,
-    TEXTURE_CUBE_MAP_POSITIVE_Z:34073,
-    TEXTURE_CUBE_MAP_NEGATIVE_Z:34074,
+    TEXTURE_2D:                     3553,
+    TEXTURE_CUBE_MAP:               34067,
+    TEXTURE_2D_ARRAY:               35866,
+    TEXTURE_CUBE_MAP_POSITIVE_X:    34069,
+    TEXTURE_CUBE_MAP_NEGATIVE_X:    34070,
+    TEXTURE_CUBE_MAP_POSITIVE_Y:    34071,
+    TEXTURE_CUBE_MAP_NEGATIVE_Y:    34072,
+    TEXTURE_CUBE_MAP_POSITIVE_Z:    34073,
+    TEXTURE_CUBE_MAP_NEGATIVE_Z:    34074,
 };
 
+/**
+ * @static
+ * @constant
+ * @memberof data
+ * @name TYPES
+ * @type {object}
+ */
 export const TYPES = {
-    UNSIGNED_BYTE:5121,
-    UNSIGNED_SHORT: 5123,
-    UNSIGNED_SHORT_5_6_5:33635,
-    UNSIGNED_SHORT_4_4_4_4:32819,
-    UNSIGNED_SHORT_5_5_5_1:32820,
-    FLOAT:5126,
-    HALF_FLOAT:36193,
-}
+    UNSIGNED_BYTE:          5121,
+    UNSIGNED_SHORT:         5123,
+    UNSIGNED_SHORT_5_6_5:   33635,
+    UNSIGNED_SHORT_4_4_4_4: 32819,
+    UNSIGNED_SHORT_5_5_5_1: 32820,
+    FLOAT:                  5126,
+    HALF_FLOAT:             36193,
+};
 
 /**
  * The scale modes that are supported by pixi.
@@ -174,7 +197,7 @@ export const TYPES = {
  *
  * @static
  * @constant
- * @memberof PIXI
+ * @memberof data
  * @name SCALE_MODES
  * @type {object}
  * @property {number} LINEAR Smooth scaling
@@ -198,7 +221,7 @@ export const SCALE_MODES = {
  * @static
  * @constant
  * @name WRAP_MODES
- * @memberof PIXI
+ * @memberof data
  * @type {object}
  * @property {number} CLAMP - The textures uvs are clamped
  * @property {number} REPEAT - The texture uvs tile and repeat
@@ -225,7 +248,7 @@ export const WRAP_MODES = {
  * @static
  * @constant
  * @name GC_MODES
- * @memberof PIXI
+ * @memberof data
  * @type {object}
  * @property {number} AUTO - Garbage collection will happen periodically automatically
  * @property {number} MANUAL - Garbage collection will need to be called manually
@@ -240,7 +263,7 @@ export const GC_MODES = {
  *
  * @static
  * @constant
- * @memberof PIXI
+ * @memberof data
  * @type {RegExp|string}
  * @example `image.png`
  */
@@ -253,7 +276,7 @@ export const URL_FILE_EXTENSION = /\.(\w{3,4})(?:$|\?|#)/i;
  * @static
  * @constant
  * @name DATA_URI
- * @memberof PIXI
+ * @memberof data
  * @type {RegExp|string}
  * @example data:image/png;base64
  */
@@ -265,7 +288,7 @@ export const DATA_URI = /^\s*data:(?:([\w-]+)\/([\w+.-]+))?(?:;(charset=[\w-]+|b
  * @static
  * @constant
  * @name SVG_SIZE
- * @memberof PIXI
+ * @memberof data
  * @type {RegExp|string}
  * @example &lt;svg width="100" height="100"&gt;&lt;/svg&gt;
  */
@@ -277,7 +300,7 @@ export const SVG_SIZE = /<svg[^>]*(?:\s(width|height)=('|")(\d*(?:\.\d+)?)(?:px)
  * @static
  * @constant
  * @name SHAPES
- * @memberof PIXI
+ * @memberof data
  * @type {object}
  * @property {number} POLY Polygon
  * @property {number} RECT Rectangle
@@ -299,7 +322,7 @@ export const SHAPES = {
  * @static
  * @constant
  * @name PRECISION
- * @memberof PIXI
+ * @memberof data
  * @type {object}
  * @property {string} LOW='lowp'
  * @property {string} MEDIUM='mediump'
@@ -317,7 +340,7 @@ export const PRECISION = {
  * @static
  * @constant
  * @name TRANSFORM_MODE
- * @memberof PIXI
+ * @memberof data
  * @type {object}
  * @property {number} STATIC
  * @property {number} DYNAMIC
@@ -333,7 +356,7 @@ export const TRANSFORM_MODE = {
  * @static
  * @constant
  * @name TEXT_GRADIENT
- * @memberof PIXI
+ * @memberof data
  * @type {object}
  * @property {number} LINEAR_VERTICAL Vertical gradient
  * @property {number} LINEAR_HORIZONTAL Linear gradient
@@ -351,7 +374,7 @@ export const TEXT_GRADIENT = {
  * @static
  * @constant
  * @name UPDATE_PRIORITY
- * @memberof PIXI
+ * @memberof data
  * @type {object}
  * @property {number} INTERACTION=50 Highest priority, used for {@link PIXI.interaction.InteractionManager}
  * @property {number} HIGH=25 High priority updating, {@link PIXI.VideoBaseTexture} and {@link PIXI.extras.AnimatedSprite}

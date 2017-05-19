@@ -42,8 +42,8 @@ var generateUniformAccessObject = function(gl, uniformData)
 
 var generateGetter = function(name)
 {
-	var template = getterTemplate.replace('%%', name);
-	return new Function(template); // jshint ignore:line
+    var template = getterTemplate.replace('%%', name);
+    return new Function(template); // jshint ignore:line
 };
 
 var generateSetter = function(name, uniform)
@@ -65,7 +65,7 @@ var generateSetter = function(name, uniform)
         template += "\nthis.gl." + setTemplate + ";";
     }
 
-  	return new Function('value', template); // jshint ignore:line
+      return new Function('value', template); // jshint ignore:line
 };
 
 var getUniformGroup = function(nameTokens, uniform)

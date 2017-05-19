@@ -4,7 +4,7 @@ export default class BufferResource extends TextureResource
 {
     constructor(source)
     {
-    	super(source);
+        super(source);
 
         this.uploadable = false;
 

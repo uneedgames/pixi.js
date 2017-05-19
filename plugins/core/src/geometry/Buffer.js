@@ -2,10 +2,10 @@ let UID = 0;
 /* eslint-disable max-len */
 
 /**
- * A wrapper for data so that it can be used and uploaded by webGL
+ * A wrapper for data so that it can be used and uploaded by WebGL
  *
  * @class
- * @memberof PIXI
+ * @memberof geometry
  */
 export default class Buffer
 {

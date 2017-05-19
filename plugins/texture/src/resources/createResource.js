@@ -5,12 +5,12 @@ import VideoResource from './VideoResource';
 
 export default function createResource(source)
 {
-	if (typeof source === 'string')
-	{
+    if (typeof source === 'string')
+    {
         // check if its a video..
         if (source.match(/\.(mp4|webm|ogg|h264|avi|mov)$/))
         {
-        	return new VideoResource.fromUrl(source);
+            return new VideoResource.fromUrl(source);
             //video!
             //return Texture.fromVideoUrl(source);
             //return SVGResource.from(url);

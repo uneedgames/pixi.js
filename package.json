@@ -56,6 +56,7 @@
     "README.md"
   ],
   "dependencies": {
+    "@fae/ecs": "^1.0.2",
     "bit-twiddle": "^1.0.2",
     "earcut": "^2.0.7",
     "eventemitter3": "^2.0.0",

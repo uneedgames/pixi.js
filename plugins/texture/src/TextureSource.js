@@ -1,9 +1,16 @@
+import Signal from 'mini-signals';
+import bitTwiddle from 'bit-twiddle';
+import { components, data, settings /* @ifdef DEBUG */, debug /* @endif */ } from '@pixi/core';
+
+
+
+
 import {
     uid, getUrlFileExtension, decomposeDataUri, getSvgSize,
     getResolutionOfUrl, BaseTextureCache, TextureCache,
 } from '../utils';
 
-import {FORMATS, TARGETS, TYPES, SCALE_MODES} from '../const';
+import { FORMATS, TARGETS, TYPES, SCALE_MODES } from '../const';
 import ImageResource from './resources/ImageResource';
 import BufferResource from './resources/BufferResource';
 import CanvasResource from './resources/CanvasResource';
@@ -12,12 +19,37 @@ import VideoResource from './resources/VideoResource';
 import createResource from './resources/createResource';
 
 import settings from '../settings';
-import EventEmitter from 'eventemitter3';
 import bitTwiddle from 'bit-twiddle';
 
-export default class BaseTexture extends EventEmitter
+/**
+ * A TextureSource is a wrapper around a texture resource that can be drawn with the
+ * WebGL API. It contains information necessary for managing that resource.
+ *
+ * @class
+ * @mixes DispatchesUpdateComponent
+ * @memberof texture
+ */
+export default class TextureSource extends components.DispatchesUpdateComponent(Object)
 {
-    constructor(resource, scaleMode, resolution, width, height, format, type, mipmap)
+    /**
+     * @param {TextureResource} resource - The drawable source.
+     * @param {number} scaleMode - How to scale the texture source. Either `WebGLRenderingContext.LINEAR`
+     *  or `WebGLRenderingContext.NEAREST`.
+     * @param {number} wrapMode - How to scale the texture source. Either `WebGLRenderingContext.CLAMP_TO_EDGE`,
+     *  `WebGLRenderingContext.REPEAT`, or `WebGLRenderingContext.MIRRORED_REPEAT`.
+     * @param {boolean} mipmap - Whether a mipmap should be generated for this texture.
+     */
+    constructor(
+        resource,
+        resolution = settings.RESOLUTION,
+        width = -1,
+        height = -1,
+        scaleMode = TextureSource.defaultScaleMode,
+        wrapMode = TextureSource.defaultWrapMode,
+        format = TextureSource.defaultFormat,
+        type = TextureSource.defaultType,
+        mipmap = TextureSource.defaultMipMap
+    )
     {
         super();
 
@@ -30,13 +62,14 @@ export default class BaseTexture extends EventEmitter
          *
          * @member {Number}
          */
-        this.width = width || -1;
+        this.width = width;
+
         /**
          * The height of texture
          *
          * @member {Number}
          */
-        this.height = height || -1;
+        this.height = height;
 
         /**
          * The resolution / device pixel ratio of the texture
@@ -44,7 +77,7 @@ export default class BaseTexture extends EventEmitter
          * @member {number}
          * @default 1
          */
-        this.resolution = resolution || settings.RESOLUTION;
+        this.resolution = resolution;
 
         /**
          * Whether or not the texture is a power of two, try to use power of two textures as much
@@ -60,7 +93,7 @@ export default class BaseTexture extends EventEmitter
          *
          * @member {Boolean}
          */
-        this.mipmap = false;//settings.MIPMAP_TEXTURES;
+        this.mipmap = false;
 
         /**
          * Set to true to enable pre-multiplied alpha
@@ -89,10 +122,10 @@ export default class BaseTexture extends EventEmitter
          *
          * @member {Number}
          */
-        this.format = format || FORMATS.RGBA;
-        this.type = type || TYPES.UNSIGNED_BYTE; //UNSIGNED_BYTE
+        this.format = format;
+        this.type = type;
 
-        this.target = TARGETS.TEXTURE_2D; // gl.TEXTURE_2D
+        this.target = TARGETS.TEXTURE_2D;
 
         this._glTextures = {};
 
@@ -104,7 +137,7 @@ export default class BaseTexture extends EventEmitter
 
         this.resource = null;
 
-        if(resource)
+        if (resource)
         {
             // lets convert this to a resource..
             resource = createResource(resource);
@@ -449,6 +482,66 @@ export default class BaseTexture extends EventEmitter
         return null;
     }
 }
+
+/**
+ * The default scale mode to use when a new texture source is created, and no
+ * scale mode is specified.
+ *
+ * @static
+ * @constant
+ * @memberof TextureSource
+ * @type {number}
+ * @default SCALE_MODES.LINEAR
+ */
+TextureSource.defaultScaleMode = data.SCALE_MODES.LINEAR;
+
+/**
+ * The default wrapping mode to use when a new texture source is created, and no
+ * wrapping mode is specified.
+ *
+ * @static
+ * @constant
+ * @memberof TextureSource
+ * @type {number}
+ * @default WRAP_MODES.CLAMP_TO_EDGE
+ */
+TextureSource.defaultWrapMode = data.WRAP_MODES.CLAMP_TO_EDGE;
+
+/**
+ * The default format to use when a new texture source is created, and no
+ * format is specified.
+ *
+ * @static
+ * @constant
+ * @memberof TextureSource
+ * @type {number}
+ * @default FORMATS.RGBA
+ */
+TextureSource.defaultFormat = data.FORMATS.RGBA;
+
+/**
+ * The default type to use when a new texture source is created, and no
+ * type is specified.
+ *
+ * @static
+ * @constant
+ * @memberof TextureSource
+ * @type {number}
+ * @default TYPES.UNSIGNED_BYTE
+ */
+TextureSource.defaultType = data.TYPES.UNSIGNED_BYTE;
+
+/**
+ * The default mipmap mode to use when a new source is created, and no
+ * mipmap mode is specified.
+ *
+ * @static
+ * @constant
+ * @memberof TextureSource
+ * @type {boolean}
+ * @default true
+ */
+TextureSource.defaultMipMap = true;
 
 BaseTexture.fromImage = BaseTexture.from;
 BaseTexture.fromSVG = BaseTexture.from;

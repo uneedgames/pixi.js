@@ -6,7 +6,7 @@ export default class CanvasResource extends TextureResource
     {
         super(source);
 
-    	this.loaded = true; // TODO rename to ready?
+        this.loaded = true; // TODO rename to ready?
         this.width = source.width;
         this.height = source.height;
 

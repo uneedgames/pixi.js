@@ -28,12 +28,12 @@ export default class ContextSystem extends WebGLSystem
 
     get isLost()
     {
-    	return (!this.gl || this.gl.isContextLost());
+        return (!this.gl || this.gl.isContextLost());
     }
 
     contextChange(gl)
     {
-    	this.gl = gl;
+        this.gl = gl;
 
         // restore a context if it was previously lost
         if (gl.isContextLost() && gl.getExtension('WEBGL_lose_context'))
@@ -50,17 +50,17 @@ export default class ContextSystem extends WebGLSystem
 
     initFromContext(gl)
     {
-    	this.gl = gl;
-    	this.validateContext(gl);
-    	this.renderer.gl = gl;
-    	this.renderer.CONTEXT_UID = CONTEXT_UID++;
-    	this.renderer.runners.contextChange.run(gl);
+        this.gl = gl;
+        this.validateContext(gl);
+        this.renderer.gl = gl;
+        this.renderer.CONTEXT_UID = CONTEXT_UID++;
+        this.renderer.runners.contextChange.run(gl);
     }
 
     initFromOptions(options)
     {
-    	const gl = this.createContext(this.renderer.view, options);
-    	this.initFromContext(gl);
+        const gl = this.createContext(this.renderer.view, options);
+        this.initFromContext(gl);
     }
 
     /**
@@ -113,9 +113,9 @@ export default class ContextSystem extends WebGLSystem
 
     destroy()
     {
-    	const view = this.renderer.view;
+        const view = this.renderer.view;
 
-    	// remove listeners
+        // remove listeners
         view.removeEventListener('webglcontextlost', this.handleContextLost);
         view.removeEventListener('webglcontextrestored', this.handleContextRestored);
 
@@ -130,7 +130,7 @@ export default class ContextSystem extends WebGLSystem
 
     postrender()
     {
-    	this.gl.flush();
+        this.gl.flush();
     }
 
     validateContext(gl)

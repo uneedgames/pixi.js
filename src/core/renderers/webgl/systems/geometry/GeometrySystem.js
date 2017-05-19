@@ -172,7 +172,7 @@ export default class GeometrySystem extends WebGLSystem
 
     draw(type, size, start, instanceCount)
     {
-    	this._activeVao.draw(type, size, start, instanceCount);
+        this._activeVao.draw(type, size, start, instanceCount);
     }
 
     /**
