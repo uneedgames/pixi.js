@@ -137,6 +137,47 @@ export const DRAW_MODES = {
 };
 
 /**
+ * The scale modes that are supported by pixi.
+ *
+ * @static
+ * @constant
+ * @memberof data
+ * @name SCALE_MODES
+ * @type {object}
+ * @property {number} LINEAR Smooth scaling, linear interpolation
+ * @property {number} NEAREST Pixelating scaling, nearest-neighbor
+ */
+export const SCALE_MODES = {
+    LINEAR:     1,
+    NEAREST:    0,
+};
+
+/**
+ * The wrap modes that are supported by pixi.
+ *
+ * The {@link PIXI.settings.WRAP_MODE} wrap mode affects the default wraping mode of future operations.
+ * It can be re-assigned to either CLAMP or REPEAT, depending upon suitability.
+ * If the texture is non power of two then clamp will be used regardless as webGL can
+ * only use REPEAT if the texture is po2.
+ *
+ * This property only affects WebGL.
+ *
+ * @static
+ * @constant
+ * @name WRAP_MODES
+ * @memberof data
+ * @type {object}
+ * @property {number} CLAMP The textures uvs are clamped
+ * @property {number} REPEAT The texture uvs tile and repeat
+ * @property {number} MIRRORED_REPEAT The texture uvs tile and repeat with mirroring
+ */
+export const WRAP_MODES = {
+    CLAMP:           33071,
+    REPEAT:          10497,
+    MIRRORED_REPEAT: 33648,
+};
+
+/**
  * @static
  * @constant
  * @memberof data
@@ -144,13 +185,52 @@ export const DRAW_MODES = {
  * @type {object}
  */
 export const FORMATS = {
+    // WebGL 1
     RGBA:             6408,
     RGB:              6407,
     ALPHA:            6406,
     LUMINANCE:        6409,
     LUMINANCE_ALPHA:  6410,
+
+    // WEBGL_depth_texture
     DEPTH_COMPONENT:  6402,
     DEPTH_STENCIL:    34041,
+};
+
+/**
+ * @static
+ * @constant
+ * @memberof data
+ * @name TYPES
+ * @type {object}
+ */
+export const TYPES = {
+    // WebGL 1
+    UNSIGNED_BYTE:                  5121,
+    UNSIGNED_SHORT_5_6_5:           33635,
+    UNSIGNED_SHORT_4_4_4_4:         32819,
+    UNSIGNED_SHORT_5_5_5_1:         32820,
+
+    // WEBGL_depth_texture (and WebGL 2)
+    UNSIGNED_SHORT:                 5123,
+    UNSIGNED_INT:                   5125,
+    UNSIGNED_INT_24_8:              34042,
+
+    // OES_texture_float (and WebGL 2)
+    FLOAT:                          5126,
+
+    // OES_texture_half_float
+    HALF_FLOAT_OES:                 36193,
+
+    // WebGL 2
+    BYTE:                           5120,
+    SHORT:                          5122,
+    INT:                            5124,
+    HALF_FLOAT:                     5131,
+    UNSIGNED_INT_2_10_10_10_REV:    33640,
+    UNSIGNED_INT_10F_11F_11F_REV:   35899,
+    UNSIGNED_INT_5_9_9_9_REV:       35902,
+    FLOAT_32_UNSIGNED_INT_24_8_REV: 36269,
 };
 
 /**
@@ -173,67 +253,6 @@ export const TARGETS = {
 };
 
 /**
- * @static
- * @constant
- * @memberof data
- * @name TYPES
- * @type {object}
- */
-export const TYPES = {
-    UNSIGNED_BYTE:          5121,
-    UNSIGNED_SHORT:         5123,
-    UNSIGNED_SHORT_5_6_5:   33635,
-    UNSIGNED_SHORT_4_4_4_4: 32819,
-    UNSIGNED_SHORT_5_5_5_1: 32820,
-    FLOAT:                  5126,
-    HALF_FLOAT:             36193,
-};
-
-/**
- * The scale modes that are supported by pixi.
- *
- * The {@link PIXI.settings.SCALE_MODE} scale mode affects the default scaling mode of future operations.
- * It can be re-assigned to either LINEAR or NEAREST, depending upon suitability.
- *
- * @static
- * @constant
- * @memberof data
- * @name SCALE_MODES
- * @type {object}
- * @property {number} LINEAR Smooth scaling
- * @property {number} NEAREST Pixelating scaling
- */
-export const SCALE_MODES = {
-    LINEAR:     1,
-    NEAREST:    0,
-};
-
-/**
- * The wrap modes that are supported by pixi.
- *
- * The {@link PIXI.settings.WRAP_MODE} wrap mode affects the default wraping mode of future operations.
- * It can be re-assigned to either CLAMP or REPEAT, depending upon suitability.
- * If the texture is non power of two then clamp will be used regardless as webGL can
- * only use REPEAT if the texture is po2.
- *
- * This property only affects WebGL.
- *
- * @static
- * @constant
- * @name WRAP_MODES
- * @memberof data
- * @type {object}
- * @property {number} CLAMP - The textures uvs are clamped
- * @property {number} REPEAT - The texture uvs tile and repeat
- * @property {number} MIRRORED_REPEAT - The texture uvs tile and repeat with mirroring
- */
-export const WRAP_MODES = {
-    CLAMP:           33071,
-    REPEAT:          10497,
-    MIRRORED_REPEAT: 33648,
-};
-
-/**
  * The gc modes that are supported by pixi.
  *
  * The {@link PIXI.settings.GC_MODE} Garbage Collection mode for pixi textures is AUTO
@@ -250,8 +269,8 @@ export const WRAP_MODES = {
  * @name GC_MODES
  * @memberof data
  * @type {object}
- * @property {number} AUTO - Garbage collection will happen periodically automatically
- * @property {number} MANUAL - Garbage collection will need to be called manually
+ * @property {number} AUTO Garbage collection will happen periodically automatically
+ * @property {number} MANUAL Garbage collection will need to be called manually
  */
 export const GC_MODES = {
     AUTO:           0,
@@ -389,3 +408,75 @@ export const UPDATE_PRIORITY = {
     LOW: -25,
     UTILITY: -50,
 };
+
+/**
+ * Some device detection information.
+ *
+ * @static
+ * @constant
+ * @name DEVICE_SUPPORT
+ * @memberof data
+ * @type {object}
+ */
+export const DEVICE_SUPPORT = {
+    WEBGL: false,
+    WEBGL2: false,
+    STENCIL: false,
+    WEBGL_EXTENSIONS: {
+        /* eslint-disable camelcase */
+        WEBGL_lose_context: false,
+        WEBGL_depth_texture: false,
+        OES_texture_float: false,
+        OES_texture_half_float: false,
+        /* eslint-enable camelcase */
+    },
+    WEBGL2_EXTENSIONS: {
+        /* eslint-disable camelcase */
+        WEBGL_lose_context: false,
+        /* eslint-enable camelcase */
+    },
+};
+
+(function _deviceDetection()
+{
+    try
+    {
+        const canvas = document.createElement('canvas');
+        const options = { stencil: false, failIfMajorPerformanceCaveat: false };
+        const gl = canvas.getContext('webgl2', options)
+            || canvas.getContext('experimental-webgl2', options)
+            || canvas.getContext('webgl', options)
+            || canvas.getContext('experimental-webgl', options)
+            || canvas.getContext('moz-webgl', options)
+            || canvas.getContext('fake-webgl', options);
+
+        DEVICE_SUPPORT.WEBGL = !!gl;
+        DEVICE_SUPPORT.WEBGL2 = DEVICE_SUPPORT.WEBGL && !!gl.copyBufferSubData;
+
+        if (!DEVICE_SUPPORT.WEBGL) return;
+
+        if (!DEVICE_SUPPORT.WEBGL2)
+        {
+            // If we only have WebGL1 support, use the OES_texture_half_float value for HALF_FLOAT
+            TYPES.HALF_FLOAT = TYPES.HALF_FLOAT_OES;
+
+            for (const k in DEVICE_SUPPORT.WEBGL_EXTENSIONS)
+            {
+                DEVICE_SUPPORT.WEBGL_EXTENSIONS[k] = !!gl.getExtension(k);
+            }
+        }
+        else
+        {
+            for (const k in DEVICE_SUPPORT.WEBGL2_EXTENSIONS)
+            {
+                DEVICE_SUPPORT.WEBGL2_EXTENSIONS[k] = !!gl.getExtension(k);
+            }
+        }
+    }
+    catch (e)
+    {
+        /* eslint-disable no-console */
+        console.warn('PIXI device detection failed, expect strange things to happen.');
+        /* eslint-enable no-console */
+    }
+})();

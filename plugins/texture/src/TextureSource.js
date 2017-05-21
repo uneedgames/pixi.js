@@ -1,35 +1,24 @@
 import Signal from 'mini-signals';
 import bitTwiddle from 'bit-twiddle';
-import { components, data, settings /* @ifdef DEBUG */, debug /* @endif */ } from '@pixi/core';
-
-
-
-
-import {
-    uid, getUrlFileExtension, decomposeDataUri, getSvgSize,
-    getResolutionOfUrl, BaseTextureCache, TextureCache,
-} from '../utils';
-
-import { FORMATS, TARGETS, TYPES, SCALE_MODES } from '../const';
-import ImageResource from './resources/ImageResource';
-import BufferResource from './resources/BufferResource';
-import CanvasResource from './resources/CanvasResource';
-import SVGResource from './resources/SVGResource';
-import VideoResource from './resources/VideoResource';
 import createResource from './resources/createResource';
-
-import settings from '../settings';
-import bitTwiddle from 'bit-twiddle';
+import BufferResource from './resources/BufferResource';
+import { components, data, settings /* @ifdef DEBUG */, debug /* @endif */ } from '@pixi/core';
 
 /**
  * A TextureSource is a wrapper around a texture resource that can be drawn with the
  * WebGL API. It contains information necessary for managing that resource.
  *
  * @class
- * @mixes DispatchesUpdateComponent
+ * @mixes UpdateComponent
+ * @mixes DestroyComponent
+ * @mixes UidComponent
  * @memberof texture
  */
-export default class TextureSource extends components.DispatchesUpdateComponent(Object)
+export default class TextureSource extends
+    components.UpdateComponent(
+    components.DestroyComponent(
+    components.UidComponent(
+    )))
 {
     /**
      * @param {TextureResource} resource - The drawable source.
@@ -41,33 +30,38 @@ export default class TextureSource extends components.DispatchesUpdateComponent(
      */
     constructor(
         resource,
-        resolution = settings.RESOLUTION,
-        width = -1,
-        height = -1,
-        scaleMode = TextureSource.defaultScaleMode,
-        wrapMode = TextureSource.defaultWrapMode,
-        format = TextureSource.defaultFormat,
-        type = TextureSource.defaultType,
-        mipmap = TextureSource.defaultMipMap
+        {
+            resolution = settings.RESOLUTION,
+            width = -1,
+            height = -1,
+            scaleMode = TextureSource.defaults.scaleMode,
+            wrapMode = TextureSource.defaults.wrapMode,
+            format = TextureSource.defaults.format,
+            type = TextureSource.defaults.type,
+            target = TextureSource.defaults.target,
+            mipmap = TextureSource.defaults.mipMap,
+            premultiplyAlpha = TextureSource.defaults.premultiplyAlpha,
+        } = {}
     )
     {
+        // make sure our components get initialized
         super();
 
-        this.uid = uid();
-
-        this.touched = 0;
+        // @ifdef DEBUG
+        validateTextureSourceParams(arguments[0], arguments[1]);
+        // @endif
 
         /**
          * The width of texture
          *
-         * @member {Number}
+         * @member {number}
          */
         this.width = width;
 
         /**
          * The height of texture
          *
-         * @member {Number}
+         * @member {number}
          */
         this.height = height;
 
@@ -80,226 +74,197 @@ export default class TextureSource extends components.DispatchesUpdateComponent(
         this.resolution = resolution;
 
         /**
+         * The scale mode to apply when scaling this texture
+         *
+         * @member {number}
+         * @see data.SCALE_MODES
+         */
+        this.scaleMode = scaleMode;
+
+        /**
+         * The texture wrapping mode of the texture.
+         *
+         * @type {number}
+         * @see data.WRAP_MODES
+         */
+        this.wrapMode = wrapMode;
+
+        /**
+         * The pixel format of the texture.
+         *
+         * @member {number}
+         * @see data.FORMATS
+         */
+        this.format = format;
+
+        /**
+         * The data type of the texture.
+         *
+         * @member {number}
+         * @see data.TYPES
+         */
+        this.type = type;
+
+        /**
+         * The texture target type of the texture.
+         *
+         * @member {number}
+         * @see data.TARGETS
+         */
+        this.target = target;
+
+        /**
+         * If mipmapping was used for this texture, enable and disable with enableMipmap()
+         *
+         * @member {boolean}
+         */
+        this.mipmap = mipmap;
+
+        /**
+         * Set to true to enable pre-multiplied alpha
+         *
+         * @member {boolean}
+         */
+        this.premultiplyAlpha = premultiplyAlpha;
+
+        /**
+         * Dispatched when a not-immediately-available source finishes loading.
+         *
+         * @member {Signal}
+         */
+        this.onReady = new Signal();
+
+        /**
+         * Dispatched when a not-immediately-available source fails to load.
+         *
+         * @member {Signal}
+         */
+        this.onError = new Signal();
+
+        /**
+         * Dispatched when the texture is being disposed, but not destroyed.
+         *
+         * @member {Signal}
+         */
+        this.onDispose = new Signal();
+
+        /**
+         * The underlying texture resource to use when drawing.
+         *
+         * @private
+         * @member {TextureResource}
+         */
+        this._resource = null;
+
+        /**
          * Whether or not the texture is a power of two, try to use power of two textures as much
          * as you can
          *
          * @private
          * @member {boolean}
          */
-        this.isPowerOfTwo = false;
+        this._isPowerOfTwo = false;
 
         /**
-         * If mipmapping was used for this texture, enable and disable with enableMipmap()
+         * Storage for binding to the resource update signal.
          *
-         * @member {Boolean}
+         * @private
+         * @member {SignalBinding}
          */
-        this.mipmap = false;
+        this._onResourceUpdatedBinding = null;
 
-        /**
-         * Set to true to enable pre-multiplied alpha
-         *
-         * @member {Boolean}
-         */
-        this.premultiplyAlpha = true;
-
-        /**
-         * [wrapMode description]
-         * @type {[type]}
-         */
-        this.wrapMode = settings.WRAP_MODE;
-
-        /**
-         * The scale mode to apply when scaling this texture
-         *
-         * @member {number}
-         * @default PIXI.settings.SCALE_MODE
-         * @see PIXI.SCALE_MODES
-         */
-        this.scaleMode = scaleMode || settings.SCALE_MODE;
-
-        /**
-         * The pixel format of the texture. defaults to gl.RGBA
-         *
-         * @member {Number}
-         */
-        this.format = format;
-        this.type = type;
-
-        this.target = TARGETS.TEXTURE_2D;
-
-        this._glTextures = {};
-
-        this._new = true;
-
-        this.dirtyId = 0;
-
-        this.valid = false;
-
-        this.resource = null;
-
-        if (resource)
-        {
-            // lets convert this to a resource..
-            resource = createResource(resource);
-            this.setResource(resource);
-        }
-
-        this.cacheId = null;
-
-        this.validate();
-
-        this.textureCacheIds = [];
-
-        /**
-         * Fired when a not-immediately-available source finishes loading.
-         *
-         * @protected
-         * @event PIXI.BaseTexture#loaded
-         * @param {PIXI.BaseTexture} baseTexture - Resource loaded.
-         */
-
-        /**
-         * Fired when a not-immediately-available source fails to load.
-         *
-         * @protected
-         * @event PIXI.BaseTexture#error
-         * @param {PIXI.BaseTexture} baseTexture - Resource errored.
-         */
-
-        /**
-         * Fired when BaseTexture is updated.
-         *
-         * @protected
-         * @event PIXI.BaseTexture#loaded
-         * @param {PIXI.BaseTexture} baseTexture - Resource loaded.
-         */
-
-        /**
-         * Fired when BaseTexture is destroyed.
-         *
-         * @protected
-         * @event PIXI.BaseTexture#error
-         * @param {PIXI.BaseTexture} baseTexture - Resource errored.
-         */
-
-        /**
-         * Fired when BaseTexture is updated.
-         *
-         * @protected
-         * @event PIXI.BaseTexture#update
-         * @param {PIXI.BaseTexture} baseTexture - Instance of texture being updated.
-         */
-
-        /**
-         * Fired when BaseTexture is destroyed.
-         *
-         * @protected
-         * @event PIXI.BaseTexture#dispose
-         * @param {PIXI.BaseTexture} baseTexture - Instance of texture being destroyed.
-         */
+        // run the resource setter
+        this.resource = resource;
     }
 
-    updateResolution()
-    {
-        const resource = this.resource;
+    /**
+     * Is this texture a power of two in dimensions.
+     *
+     * @member {boolean}
+     */
+    get isPowerOfTwo() { return this._isPowerOfTwo; }
 
-        if(resource && resource.width !== -1 && resource.hight !== -1)
+    /**
+     * Is this texture source ready to be used (does it have a valid width/height)
+     *
+     * @member {boolean}
+     */
+    get ready() { return this.width !== -1 && this.height !== -1; }
+
+    /**
+     * The real pixel width of this texture (width * resolution)
+     *
+     * @member {number}
+     */
+    get realWidth() { return this.width * this.resolution; }
+
+    /**
+     * The real pixel height of this texture (width * resolution)
+     *
+     * @member {number}
+     */
+    get realHeight() { return this.height * this.resolution; }
+
+    /**
+     * The underlying resource object we use when drawing.
+     *
+     * @member {TextureResource}
+     */
+    get resource() { return this._resource; }
+
+    set resource(v) // eslint-disable-line require-jsdoc
+    {
+        if (this._onResourceUpdatedBinding)
+        {
+            this._onResourceUpdatedBinding.detach();
+            this._onResourceUpdatedBinding = null;
+        }
+
+        this._resource = createResource(v);
+        this._onResourceUpdatedBinding = this._resource.onUpdate.add(this.update, this);
+
+        if (this._resource.loaded)
+        {
+            this._onResourceReady();
+        }
+        else
+        {
+            this._resource.onReady.once(this._onResourceReady, this);
+        }
+    }
+
+    /**
+     * Updates the width/height of the texture based on the resource and resolution.
+     *
+     * @private
+     */
+    _updateDimensions()
+    {
+        const resource = this._resource;
+
+        if (resource && resource.ready)
         {
             this.width = resource.width / this.resolution;
             this.height = resource.height / this.resolution;
         }
     }
 
-    setResource(resource)
+    /**
+     * Called when the underlying resource is loaded.
+     *
+     * @private
+     */
+    _onResourceReady()
     {
-        // TODO currently a resource can only be set once..
+        this._updateDimensions();
 
-        if(this.resource)
+        if (this.ready)
         {
-            this.resource.resourceUpdated.remove(this);
+            this._isPowerOfTwo = bitTwiddle.isPow2(this.realWidth) && bitTwiddle.isPow2(this.realHeight);
+
+            this.update();
+            this.onReady.dispatch(this);
         }
-
-
-        this.resource = resource;
-
-        resource.resourceUpdated.add(this); //calls resourceUpaded
-
-        if(resource.loaded)
-        {
-            this.resourceLoaded(resource)
-        }
-
-        resource.load
-        .then(this.resourceLoaded.bind(this))
-        .catch((reason)=>{
-
-            // failed to load - maybe resource was destroyed before it loaded.
-            console.warn(reason);
-
-        })
-
-    }
-
-    resourceLoaded(resource)
-    {
-        if(this.resource === resource)
-        {
-            this.updateResolution();
-
-            this.validate();
-
-            if(this.valid)
-            {
-                this.isPowerOfTwo = bitTwiddle.isPow2(this.realWidth) && bitTwiddle.isPow2(this.realHeight);
-
-                // we have not swapped half way!
-                this.dirtyId++;
-
-                this.emit('loaded', this);
-            }
-        }
-
-    }
-
-    resourceUpdated()
-    {
-        // the resource was updated..
-        this.dirtyId++;
-    }
-
-    update()
-    {
-        this.dirtyId++;
-    }
-
-    resize(width, height)
-    {
-        this.width = width;
-        this.height = height;
-
-        this.dirtyId++;
-    }
-
-    validate()
-    {
-        let valid = true;
-
-        if(this.width === -1 || this.height === -1)
-        {
-            valid = false;
-        }
-
-        this.valid = valid;
-    }
-
-    get realWidth()
-    {
-        return this.width * this.resolution;
-    }
-
-    get realHeight()
-    {
-        return this.height * this.resolution;
     }
 
     /**
@@ -308,27 +273,22 @@ export default class TextureSource extends components.DispatchesUpdateComponent(
      */
     destroy()
     {
-        if (this.cacheId)
-        {
-            delete BaseTextureCache[this.cacheId];
-            delete TextureCache[this.cacheId];
-
-            this.cacheId = null;
-        }
-
-        // remove and destroy the resource
-
-        if(this.resource)
-        {
-            this.resource.destroy();
-            this.resource = null;
-        }
-
-        // finally let the webGL renderer know..
+        super.destroy();
         this.dispose();
 
-        BaseTexture.removeFromCache(this);
-        this.textureCacheIds = null;
+        if (this._onResourceUpdatedBinding)
+        {
+            this._onResourceUpdatedBinding.detach();
+            this._onResourceUpdatedBinding = null;
+        }
+
+        this.onUpdate.detachAll();
+        this.onReady.detachAll();
+        this.onError.detachAll();
+        this.onDispose.detachAll();
+
+        this._resource.destroy();
+        this._resource = null;
     }
 
     /**
@@ -336,213 +296,211 @@ export default class TextureSource extends components.DispatchesUpdateComponent(
      * This means you can still use the texture later which will upload it to GPU
      * memory again.
      *
-     * @fires PIXI.BaseTexture#dispose
      */
     dispose()
     {
-        this.emit('dispose', this);
+        this.onDispose.dispatch(this);
     }
 
     /**
-     * Helper function that creates a base texture based on the source you provide.
-     * The source can be - image url, image element, canvas element.
+     * Helper function that creates a texture source based on the resource you provide.
      *
      * @static
-     * @param {string|HTMLImageElement|HTMLCanvasElement} source - The source to create base texture from.
-     * @param {number} [scaleMode=PIXI.settings.SCALE_MODE] - See {@link PIXI.SCALE_MODES} for possible values
-     * @param {number} [sourceScale=(auto)] - Scale for the original image, used with Svg images.
-     * @return {PIXI.BaseTexture} The new base texture.
+     * @param {string|CanvasImageSource|ArrayBufferView} resource The source to create base texture from.
+     * @return {TextureSource} The new base texture.
      */
-    static from(source, scaleMode, sourceScale)
+    static from(resource)
     {
-        var cacheId = null;
-
-        if (typeof source === 'string')
+        if (resource.buffer instanceof ArrayBuffer)
         {
-            cacheId = source;
-        }
-        else
-        {
-            if(!source._pixiId)
-            {
-                source._pixiId = `pixiid_${uid()}`;
-            }
-
-            cacheId = source._pixiId;
+            return TextureSource.fromArrayBufferView(resource);
         }
 
-        let baseTexture = BaseTextureCache[cacheId];
-
-        if (!baseTexture)
-        {
-            baseTexture = new BaseTexture(source);
-            baseTexture.cacheId = cacheId;
-            BaseTexture.addToCache(baseTexture, cacheId);
-        }
-
-        return baseTexture;
-    }
-
-    static fromFloat32Array(width, height, float32Array)
-    {
-        float32Array = float32Array || new Float32Array(width*height*4);
-
-        var texture = new BaseTexture(new BufferResource(float32Array),
-                                  SCALE_MODES.NEAREST,
-                                  1,
-                                  width,
-                                  height,
-                                  FORMATS.RGBA,
-                                  TYPES.FLOAT);
-        return texture;
-    }
-
-    static fromUint8Array(width, height, uint8Array)
-    {
-        uint8Array = uint8Array || new Uint8Array(width*height*4);
-
-        var texture = new BaseTexture(new BufferResource(uint8Array),
-                                  SCALE_MODES.NEAREST,
-                                  1,
-                                  width,
-                                  height,
-                                  FORMATS.RGBA,
-                                  TYPES.UNSIGNED_BYTE);
-        return texture;
+        return new TextureSource(resource);
     }
 
     /**
-     * Adds a BaseTexture to the global BaseTextureCache. This cache is shared across the whole PIXI object.
+     * Helper function that creates a texture source from an array buffer view (Uint8Array, FLoat32Array, etc).
      *
      * @static
-     * @param {PIXI.BaseTexture} baseTexture - The BaseTexture to add to the cache.
-     * @param {string} id - The id that the BaseTexture will be stored against.
+     * @param {ArrayBufferView} array The data array to create base texture from.
+     * @param {number} format The {@link data.FORMATS} to use for the texture, by default this is RGBA.
+     * @param {number} type The {@link data.TYPES} to use for the texture, by default this is auto-detected.
+     * @return {TextureSource} The new base texture.
      */
-    static addToCache(baseTexture, id)
+    static fromArrayBufferView(array, format = data.FORMATS.RGBA, type = 0)
     {
-        if (id)
+        if (type === 0)
         {
-            if (baseTexture.textureCacheIds.indexOf(id) === -1)
-            {
-                baseTexture.textureCacheIds.push(id);
-            }
-
-            // @if DEBUG
-            /* eslint-disable no-console */
-            if (BaseTextureCache[id])
-            {
-                console.warn(`BaseTexture added to the cache with an id [${id}] that already had an entry`);
-            }
-            /* eslint-enable no-console */
-            // @endif
-
-            BaseTextureCache[id] = baseTexture;
-        }
-    }
-
-    /**
-     * Remove a BaseTexture from the global BaseTextureCache.
-     *
-     * @static
-     * @param {string|PIXI.BaseTexture} baseTexture - id of a BaseTexture to be removed, or a BaseTexture instance itself.
-     * @return {PIXI.BaseTexture|null} The BaseTexture that was removed.
-     */
-    static removeFromCache(baseTexture)
-    {
-        if (typeof baseTexture === 'string')
-        {
-            const baseTextureFromCache = BaseTextureCache[baseTexture];
-
-            if (baseTextureFromCache)
-            {
-                const index = baseTextureFromCache.textureCacheIds.indexOf(baseTexture);
-
-                if (index > -1)
-                {
-                    baseTextureFromCache.textureCacheIds.splice(index, 1);
-                }
-
-                delete BaseTextureCache[baseTexture];
-
-                return baseTextureFromCache;
-            }
-        }
-        else
-        {
-            for (let i = 0; i < baseTexture.textureCacheIds.length; ++i)
-            {
-                delete BaseTextureCache[baseTexture.textureCacheIds[i]];
-            }
-
-            baseTexture.textureCacheIds.length = 0;
-
-            return baseTexture;
+            if (array instanceof Int8Array) type = data.TYPES.BYTE;
+            else if (array instanceof Uint8Array) type = data.TYPES.UNSIGNED_BYTE;
+            else if (array instanceof Int16Array) type = data.TYPES.SHORT;
+            else if (array instanceof Uint16Array) type = data.TYPES.UNSIGNED_SHORT;
+            else if (array instanceof Int32Array) type = data.TYPES.INT;
+            else if (array instanceof Uint32Array) type = data.TYPES.UNSIGNED_INT;
+            else if (array instanceof Float32Array) type = data.TYPES.FLOAT;
         }
 
-        return null;
+        // @ifdef DEBUG
+        debug.ASSERT(
+            type !== 0 && Object.keys(data.TYPES).reduce((p, k) => p || type === data.TYPES[k], false),
+            'Invalid type given to fromArrayBufferView, or we were unable to detect the correct type.',
+            type
+        );
+        // @endif
+
+        return new TextureSource(
+            new BufferResource(array),
+            {
+                resolution: 1,
+                width: array.length,
+                height: 1,
+                scaleMode: data.SCALE_MODES.NEAREST,
+                wrapMode: data.WRAP_MODES.CLAMP,
+                format,
+                type,
+                target: data.TARGETS.TEXTURE_2D,
+                mipmap: false,
+                premultiplyAlpha: false,
+            }
+        );
     }
 }
 
 /**
- * The default scale mode to use when a new texture source is created, and no
- * scale mode is specified.
+ * The defaults to use when creating new texture sources.
  *
  * @static
  * @constant
  * @memberof TextureSource
- * @type {number}
+ * @type {object}
+ * @property {number} scaleMode
+ * @property {number} wrapMode
+ * @property {number} format
+ * @property {number} type
+ * @property {boolean} mipmap
+ * @property {boolean} premultiplyAlpha
  * @default SCALE_MODES.LINEAR
  */
-TextureSource.defaultScaleMode = data.SCALE_MODES.LINEAR;
+TextureSource.defaults = {
+    scaleMode: data.SCALE_MODES.LINEAR,
+    wrapMode: data.WRAP_MODES.CLAMP_TO_EDGE,
+    format: data.FORMATS.RGBA,
+    type: data.TYPES.UNSIGNED_BYTE,
+    target: data.TARGETS.TEXTURE_2D,
+    mipMap: true,
+    premultiplyAlpha: true,
+};
 
-/**
- * The default wrapping mode to use when a new texture source is created, and no
- * wrapping mode is specified.
- *
- * @static
- * @constant
- * @memberof TextureSource
- * @type {number}
- * @default WRAP_MODES.CLAMP_TO_EDGE
- */
-TextureSource.defaultWrapMode = data.WRAP_MODES.CLAMP_TO_EDGE;
+// @ifdef DEBUG
+function validateTextureSourceParams(resource, { scaleMode, wrapMode, format, type, target, mipmap, premultiplyAlpha })
+{
+    /* eslint-disable max-len */
+    debug.ASSERT(!!resource, `Resource is required to create a TextureSource.`, resource);
+    debug.ASSERT(Object.keys(data.SCALE_MODES).reduce((p, k) => p || scaleMode === data.SCALE_MODES[k], false), `Invalid scaleMode.`, scaleMode);
+    debug.ASSERT(Object.keys(data.WRAP_MODES).reduce((p, k) => p || wrapMode === data.WRAP_MODES[k], false), `Invalid wrapMode.`, wrapMode);
+    debug.ASSERT(Object.keys(data.FORMATS).reduce((p, k) => p || format === data.FORMATS[k], false), `Invalid format.`, format);
+    debug.ASSERT(Object.keys(data.TYPES).reduce((p, k) => p || type === data.TYPES[k], false), `Invalid type.`, type);
+    debug.ASSERT(Object.keys(data.TARGETS).reduce((p, k) => p || target === data.TARGETS[k], false), `Invalid type.`, target);
+    debug.ASSERT(typeof mipmap === 'boolean', `Invalid mipmap value.`, mipmap);
+    debug.ASSERT(typeof premultiplyAlpha === 'boolean', `Invalid premultiplyAlpha value.`, premultiplyAlpha);
 
-/**
- * The default format to use when a new texture source is created, and no
- * format is specified.
- *
- * @static
- * @constant
- * @memberof TextureSource
- * @type {number}
- * @default FORMATS.RGBA
- */
-TextureSource.defaultFormat = data.FORMATS.RGBA;
+    // Ensure some types match for buffers.
+    if (resource.data && resource.data.buffer instanceof ArrayBuffer)
+    {
+        const w2 = data.DEVICE_SUPPORT.WEBGL2;
+        const depthTex = data.DEVICE_SUPPORT.WEBGL_EXTENSIONS.WEBGL_depth_texture;
+        const texFloat = data.DEVICE_SUPPORT.WEBGL_EXTENSIONS.WEBGL_depth_texture;
+        const texHalfFloat = data.DEVICE_SUPPORT.WEBGL_EXTENSIONS.OES_texture_half_float;
 
-/**
- * The default type to use when a new texture source is created, and no
- * type is specified.
- *
- * @static
- * @constant
- * @memberof TextureSource
- * @type {number}
- * @default TYPES.UNSIGNED_BYTE
- */
-TextureSource.defaultType = data.TYPES.UNSIGNED_BYTE;
+        // validate the length of the array view matches the format expectation
+        switch (format)
+        {
+            case data.FORMATS.RGBA:
+                debug.ASSERT(resource.data.length % 4 === 0, 'The RGBA format requires 4 components per pixel.');
+                break;
 
-/**
- * The default mipmap mode to use when a new source is created, and no
- * mipmap mode is specified.
- *
- * @static
- * @constant
- * @memberof TextureSource
- * @type {boolean}
- * @default true
- */
-TextureSource.defaultMipMap = true;
+            case data.FORMATS.RGB:
+                debug.ASSERT(resource.data.length % 3 === 0, 'The RGB format requires 3 components per pixel.');
+                break;
 
-BaseTexture.fromImage = BaseTexture.from;
-BaseTexture.fromSVG = BaseTexture.from;
-BaseTexture.fromCanvas = BaseTexture.from;
+            case data.FORMATS.LUMINANCE_ALPHA:
+                debug.ASSERT(resource.data.length % 2 === 0, 'The LUMINANCE_ALPHA format requires 2 components per pixel.');
+                break;
+
+            case data.FORMATS.DEPTH_COMPONENT:
+            case data.FORMATS.DEPTH_STENCIL:
+                debug.ASSERT(w2 || depthTex, 'The DEPTH_COMPONENT and DEPTH_STENCIL formats require either WebGL2 or the WEBGL_depth_texture extension.');
+                break;
+
+            // ALPHA, LUMINANCE, DEPTH_COMPONENT, and DEPTH_STENCIL are 1 byte per pixel so no need to check size.
+        }
+
+        // validate the correct type/array view combo:
+        switch (type)
+        {
+            // WebGL 1
+            case data.TYPES.UNSIGNED_BYTE:
+                debug.ASSERT(resource.data instanceof Uint8Array, 'The UNSIGNED_BYTE type requires using an Uint8Array.');
+                break;
+            case data.TYPES.UNSIGNED_SHORT_5_6_5:
+                debug.ASSERT(resource.data instanceof Uint16Array, 'The UNSIGNED_SHORT_5_6_5 type requires using an Uint16Array.');
+                break;
+            case data.TYPES.UNSIGNED_SHORT_4_4_4_4:
+                debug.ASSERT(resource.data instanceof Uint16Array, 'The UNSIGNED_SHORT_4_4_4_4 type requires using an Uint16Array.');
+                break;
+            case data.TYPES.UNSIGNED_SHORT_5_5_5_1:
+                debug.ASSERT(resource.data instanceof Uint16Array, 'The UNSIGNED_SHORT_4_4_4_4 type requires using an Uint16Array.');
+                break;
+
+            // WEBGL_depth_texture (and WebGL 2)
+            case data.TYPES.UNSIGNED_SHORT:
+                debug.ASSERT((w2 || depthTex) && resource.data instanceof Uint16Array, 'The UNSIGNED_SHORT type requires using an Uint16Array, and WebGL2 or WEBGL_depth_texture.');
+                break;
+            case data.TYPES.UNSIGNED_INT:
+                debug.ASSERT((w2 || depthTex) && resource.data instanceof Uint32Array, 'The UNSIGNED_INT_5_9_9_9_REV type requires using an Uint32Array, and WebGL2 or WEBGL_depth_texture.');
+                break;
+            case data.TYPES.UNSIGNED_INT_24_8:
+                debug.ASSERT((w2 || depthTex) && resource.data instanceof Uint32Array, 'The UNSIGNED_INT_5_9_9_9_REV type requires using an Uint32Array, and WebGL2 or WEBGL_depth_texture.');
+                break;
+
+            // OES_texture_float (and WebGL 2)
+            case data.TYPES.FLOAT:
+                debug.ASSERT((w2 || texFloat) && resource.data instanceof Float32Array, 'The FLOAT type requires using an Float32Array, and WebGL2 or OES_texture_float.');
+                break;
+
+            // OES_texture_half_float
+            case data.TYPES.HALF_FLOAT_OES:
+                debug.ASSERT(texHalfFloat && (resource.data instanceof Uint16Array || resource.data instanceof Int16Array), 'The HALF_FLOAT_OES type requires using an Uint16Array or Int16Array, and OES_texture_half_float.');
+                break;
+
+            // WebGL 2
+            case data.TYPES.BYTE:
+                debug.ASSERT(w2 && resource.data instanceof Int8Array, 'The BYTE type requires using an Int8Array, and WebGL2.');
+                break;
+            case data.TYPES.SHORT:
+                debug.ASSERT(w2 && resource.data instanceof Int16Array, 'The SHORT type requires using an Int16Array, and WebGL2.');
+                break;
+            case data.TYPES.INT:
+                debug.ASSERT(w2 && resource.data instanceof Int32Array, 'The INT type requires using an Int32Array, and WebGL2.');
+                break;
+            case data.TYPES.HALF_FLOAT:
+                debug.ASSERT(w2 && (resource.data instanceof Uint16Array || resource.data instanceof Int16Array), 'The HALF_FLOAT type requires using a Uint16Array or Int16Array, and WebGL2.');
+                break;
+            case data.TYPES.UNSIGNED_INT_2_10_10_10_REV:
+                debug.ASSERT(w2 && resource.data instanceof Uint32Array, 'The UNSIGNED_INT_2_10_10_10_REV type requires using an Uint32Array, and WebGL2.');
+                break;
+            case data.TYPES.UNSIGNED_INT_10F_11F_11F_REV:
+                debug.ASSERT(w2 && resource.data instanceof Uint32Array, 'The UNSIGNED_INT_10F_11F_11F_REV type requires using an Uint32Array, and WebGL2.');
+                break;
+            case data.TYPES.UNSIGNED_INT_5_9_9_9_REV:
+                debug.ASSERT(w2 && resource.data instanceof Uint32Array, 'The UNSIGNED_INT_5_9_9_9_REV type requires using an Uint32Array, and WebGL2.');
+                break;
+            case data.TYPES.FLOAT_32_UNSIGNED_INT_24_8_REV:
+                debug.ASSERT(w2 && resource.data instanceof Float32Array, 'The FLOAT_32_UNSIGNED_INT_24_8_REV type requires using an Float32Array, and WebGL2.');
+                break;
+        }
+    }
+    /* eslint-enable max-len */
+}
+// @endif

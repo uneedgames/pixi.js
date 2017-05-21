@@ -178,32 +178,6 @@ export default class VideoResource extends TextureResource
     }
 
     /**
-     * Mimic Pixi BaseTexture.from.... method.
-     *
-     * @static
-     * @param {HTMLVideoElement} video - Video to create texture from
-     * @param {number} [scaleMode=PIXI.settings.SCALE_MODE] - See {@link PIXI.SCALE_MODES} for possible values
-     * @return {PIXI.VideoBaseTexture} Newly created VideoBaseTexture
-     */
-    static fromVideo(video, scaleMode)
-    {
-        if (!video._pixiId)
-        {
-            video._pixiId = `video_${uid()}`;
-        }
-
-        let baseTexture = BaseTextureCache[video._pixiId];
-
-        if (!baseTexture)
-        {
-            baseTexture = new VideoBaseTexture(video, scaleMode);
-            BaseTextureCache[video._pixiId] = baseTexture;
-        }
-
-        return baseTexture;
-    }
-
-    /**
      * Should the base texture automatically update itself, set to true by default
      *
      * @member {boolean}

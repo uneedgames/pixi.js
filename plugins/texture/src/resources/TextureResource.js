@@ -1,14 +1,45 @@
-import Runner from 'mini-runner';
+import { components /* @ifdef DEBUG */, debug /* @endif */ } from '@pixi/core';
 
-export default class TextureResource
+/**
+ * @class
+ * @memberof texture
+ */
+export default class TextureResource extends
+    components.UpdateComponent(
+    components.DestroyComponent(
+    components.UidComponent(
+    )))
 {
-    constructor(source)
+    /**
+     * @param {*} data The underlying data of this resource
+     */
+    constructor(data)
     {
-        this.source = source;
+        super();
 
-        this.loaded = false; // TODO rename to ready?
+        // @ifdef DEBUG
+        debug.ASSERT(!!data, `Data is required to create a TextureResource.`, data);
+        // @endif
 
+        /**
+         * The underlying data of this resource
+         *
+         * @member {*}
+         */
+        this.data = data;
+
+        /**
+         * The width of this resource.
+         *
+         * @member {number}
+         */
         this.width = -1;
+
+        /**
+         * The height of this resource.
+         *
+         * @member {number}
+         */
         this.height = -1;
 
         this.uploadable = true;
@@ -19,8 +50,10 @@ export default class TextureResource
         this.load = null;
     }
 
-    destroy()
-    {
-        console.warn(this, ' has no destroy function')
-    }
+    /**
+     * Is this texture valid (does it have a valid width/height)
+     *
+     * @member {boolean}
+     */
+    get valid() { return this.width !== -1 && this.height !== -1; }
 }

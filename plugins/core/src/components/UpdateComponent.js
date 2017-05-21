@@ -1,9 +1,9 @@
 import Signal from 'mini-signals';
 
-export default function DispatchesUpdateComponent(Base)
+export default function UpdateComponent(Base = Object)
 {
     /**
-     * @class DispatchesUpdateComponent
+     * @class UpdateComponent
      * @memberof components
      */
     return class extends Base
@@ -13,6 +13,7 @@ export default function DispatchesUpdateComponent(Base)
          */
         constructor()
         {
+            // components should always call base ctor first.
             super(...arguments);
 
             /**
@@ -32,6 +33,16 @@ export default function DispatchesUpdateComponent(Base)
              * @readonly
              */
             this.updateID = 0;
+        }
+
+        /**
+         * Updates the updateID and dispatches a signal.
+         *
+         */
+        update()
+        {
+            this.updateID++;
+            this.onUpdate.dispatch(this);
         }
     };
 }

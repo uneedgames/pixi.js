@@ -1,13 +1,9 @@
-import { components /* @ifdef DEBUG */, debug /* @endif */ } from '@pixi/core';
 import TextureSource from './TextureSource';
-import VideoBaseTexture from './VideoBaseTexture';
-import TextureResource from './resources/TextureResource';
-import ImageResource from './resources/ImageResource';
-import CanvasResource from './resources/CanvasResource';
-import TextureUvs from './TextureUvs';
-import settings from '../settings';
+import TextureUVs from './TextureUVs';
+import BufferResource from './resources/BufferResource';
+import createResource from './resources/createResource';
+import { components /* @ifdef DEBUG */, debug /* @endif */ } from '@pixi/core';
 import { Rectangle } from '../math';
-import { TextureCache, getResolutionOfUrl } from '../utils';
 
 /**
  * A Texture is a wrapper around a TextureSource. It represents the frame of the
@@ -32,13 +28,19 @@ import { TextureCache, getResolutionOfUrl } from '../utils';
  * You can use a ticker or rAF to ensure your sprites load the finished textures after processing. See issue #3068.
  *
  * @class
- * @mixes DispatchesUpdateComponent
+ * @mixes UpdateComponent
+ * @mixes DestroyComponent
+ * @mixes UidComponent
  * @memberof texture
  */
-export default class Texture extends components.DispatchesUpdateComponent(Object)
+export default class Texture extends
+    components.UpdateComponent(
+    components.DestroyComponent(
+    components.UidComponent(
+    )))
 {
     /**
-     * @param {TextureSource|CanvasImageSource|Texture} source - The base texture source to create the texture from
+     * @param {TextureSource} source - The base texture source to create the texture from
      * @param {Rectangle} [frame] - The rectangle frame of the texture to show
      * @param {Rectangle} [orig] - The area of original texture
      * @param {Rectangle} [trim] - Trimmed rectangle of original texture
@@ -47,24 +49,28 @@ export default class Texture extends components.DispatchesUpdateComponent(Object
      */
     constructor(source, frame, orig, trim, rotation = 0)
     {
+        // make sure our components get initialized
+        super();
+
         // massage source into a TextureSource instance.
         if (source instanceof Texture)
         {
             source = source.source;
         }
-        else if (!(source instanceof TextureResource))
+        else if (!(source instanceof TextureSource))
         {
-            source = new TextureResource(source);
+            source = new TextureSource(source);
         }
 
         // @ifdef DEBUG
-        debug.ASSERT(source instanceof TextureResource, 'Resource passed to Texture is not a TextureResource.');
+        debug.ASSERT(source instanceof TextureSource, 'Source passed to Texture is not a TextureSource.', source);
         // @endif
 
         /**
          * The source for this texture to represent.
          *
-         * @member {TextureResource}
+         * @readonly
+         * @member {TextureSource}
          */
         this.source = source;
 
@@ -73,7 +79,7 @@ export default class Texture extends components.DispatchesUpdateComponent(Object
          *
          * @member {Rectangle}
          */
-        this.trim = trim;
+        this.trim = trim || null;
 
         /**
          * This is the area of original texture, before it was put in atlas
@@ -83,35 +89,12 @@ export default class Texture extends components.DispatchesUpdateComponent(Object
         this.orig = orig || frame;
 
         /**
-         * This will let the renderer know if the texture is valid. If it's not then it cannot be rendered.
-         *
-         * @member {boolean}
-         */
-        this.valid = false;
-
-        /**
-         * Extra field for extra plugins. May contain clamp settings and some matrices.
-         *
-         * @type {Object}
-         */
-        this.transform = null;
-
-        /**
-         * The ids under which this Texture has been added to the texture cache. This is
-         * automatically set as long as Texture.addToCache is used, but may not be set if a
-         * Texture is added directly to the TextureCache array.
-         *
-         * @member {string[]}
-         */
-        this.textureCacheIds = [];
-
-        /**
          * Does this texture have an explicit frame, or do we use the whole image?
          *
          * @private
          * @member {boolean}
          */
-        this._explicitFrame = !!frame;
+        this._explicitFrame = frame || null;
 
         /**
          * The frame of the source to represent.
@@ -136,373 +119,30 @@ export default class Texture extends components.DispatchesUpdateComponent(Object
         this._rotation = rotation === true ? -Math.PI / 2 : rotation;
 
         // setup frame
-        if (source.ready)
+        if (source.valid)
         {
-            if (!this._explicitFrame)
-            {
-                frame = new Rectangle(0, 0, source.width, source.height);
-
-                this._onSourceUpdateBinding = source.onUpdate.add(this._onSourceUpdate, this);
-            }
-
-            this.frame = frame;
+            this._onSourceReady();
         }
         else
         {
             this._onSourceReadyBinding = source.onReady.once(this._onSourceReady, this);
         }
-
-        this._updateID = 0;
     }
 
     /**
-     * Updates this texture on the gpu.
+     * Is this texture source ready to be used (does it have a valid frame/source)
      *
+     * @member {boolean}
      */
-    update()
+    get ready()
     {
-        this.baseTexture.update();
+        return this._frame && this._frame.width && this._frame.height && this.source.ready;
     }
 
     /**
-     * Called when the base texture is updated
+     * The frame specifies the region of the texture source that this texture uses.
      *
-     * @private
-     * @param {PIXI.BaseTexture} baseTexture - The base texture.
-     */
-    onBaseTextureUpdated(baseTexture)
-    {
-        this._updateID++;
-
-        // TODO this code looks confusing.. boo to abusing getters and setters!
-        if (this.noFrame)
-        {
-            this.frame = new Rectangle(0, 0, baseTexture.width, baseTexture.height);
-        }
-        else
-        {
-            this.frame = this._frame;
-            // TODO maybe watch out for the no frame option
-            // updating the texture will should update the frame if it was set to no frame..
-        }
-
-        this.emit('update', this);
-    }
-
-    /**
-     * Destroys this texture
-     *
-     * @param {boolean} [destroyBase=false] Whether to destroy the base texture as well
-     */
-    destroy(destroyBase)
-    {
-        if (this.baseTexture)
-        {
-            if (destroyBase)
-            {
-                // delete the texture if it exists in the texture cache..
-                // this only needs to be removed if the base texture is actually destroyed too..
-                if (TextureCache[this.baseTexture.imageUrl])
-                {
-                    Texture.removeFromCache(this.baseTexture.imageUrl);
-                }
-
-                this.baseTexture.destroy();
-            }
-
-            this.baseTexture.off('update', this.onBaseTextureUpdated, this);
-
-            this.baseTexture = null;
-        }
-
-        this._frame = null;
-        this._uvs = null;
-        this.trim = null;
-        this.orig = null;
-
-        this.valid = false;
-
-        Texture.removeFromCache(this);
-        this.textureCacheIds = null;
-    }
-
-    /**
-     * Creates a new texture object that acts the same as this one.
-     *
-     * @return {PIXI.Texture} The new texture
-     */
-    clone()
-    {
-        return new Texture(this.baseTexture, this.frame, this.orig, this.trim, this.rotate);
-    }
-
-    /**
-     * Updates the internal WebGL UV cache.
-     *
-     * @protected
-     */
-    _updateUvs()
-    {
-        if (!this._uvs)
-        {
-            this._uvs = new TextureUvs();
-        }
-
-        this._uvs.set(this._frame, this.baseTexture, this.rotate);
-
-        this._updateID++;
-    }
-
-    /**
-     * Helper function that creates a Texture object from the given image url.
-     * If the image is not in the texture cache it will be  created and loaded.
-     *
-     * @static
-     * @param {string} imageUrl - The image url of the texture
-     * @param {boolean} [crossorigin] - Whether requests should be treated as crossorigin
-     * @param {number} [scaleMode=PIXI.settings.SCALE_MODE] - See {@link PIXI.SCALE_MODES} for possible values
-     * @param {number} [sourceScale=(auto)] - Scale for the original image, used with SVG images.
-     * @return {PIXI.Texture} The newly created texture
-     */
-    static fromImage(imageUrl, crossorigin, scaleMode, sourceScale)
-    {
-        let texture = TextureCache[imageUrl];
-
-        if (!texture)
-        {
-            texture = new Texture(BaseTexture.fromImage(imageUrl, crossorigin, scaleMode, sourceScale));
-            Texture.addToCache(texture, imageUrl);
-        }
-
-        return texture;
-    }
-
-    /**
-     * Helper function that creates a sprite that will contain a texture from the TextureCache based on the frameId
-     * The frame ids are created when a Texture packer file has been loaded
-     *
-     * @static
-     * @param {string} frameId - The frame Id of the texture in the cache
-     * @return {PIXI.Texture} The newly created texture
-     */
-    static fromFrame(frameId)
-    {
-        const texture = TextureCache[frameId];
-
-        if (!texture)
-        {
-            throw new Error(`The frameId "${frameId}" does not exist in the texture cache`);
-        }
-
-        return texture;
-    }
-
-    /**
-     * Helper function that creates a new Texture based on the given canvas element.
-     *
-     * @static
-     * @param {HTMLCanvasElement} canvas - The canvas element source of the texture
-     * @param {number} [scaleMode=PIXI.settings.SCALE_MODE] - See {@link PIXI.SCALE_MODES} for possible values
-     * @param {string} [origin='canvas'] - A string origin of who created the base texture
-     * @return {PIXI.Texture} The newly created texture
-     */
-    static fromCanvas(canvas, scaleMode, origin = 'canvas')
-    {
-        return new Texture(BaseTexture.fromCanvas(canvas, scaleMode, origin));
-    }
-
-    /**
-     * Helper function that creates a new Texture based on the given video element.
-     *
-     * @static
-     * @param {HTMLVideoElement|string} video - The URL or actual element of the video
-     * @param {number} [scaleMode=PIXI.settings.SCALE_MODE] - See {@link PIXI.SCALE_MODES} for possible values
-     * @return {PIXI.Texture} The newly created texture
-     */
-    static fromVideo(video, scaleMode)
-    {
-        if (typeof video === 'string')
-        {
-            return Texture.fromVideoUrl(video, scaleMode);
-        }
-
-        return new Texture(VideoBaseTexture.fromVideo(video, scaleMode));
-    }
-
-    /**
-     * Helper function that creates a new Texture based on the video url.
-     *
-     * @static
-     * @param {string} videoUrl - URL of the video
-     * @param {number} [scaleMode=PIXI.settings.SCALE_MODE] - See {@link PIXI.SCALE_MODES} for possible values
-     * @return {PIXI.Texture} The newly created texture
-     */
-    static fromVideoUrl(videoUrl, scaleMode)
-    {
-        return new Texture(VideoBaseTexture.fromUrl(videoUrl, scaleMode));
-    }
-
-    /**
-     * Helper function that creates a new Texture based on the source you provide.
-     * The source can be - frame id, image url, video url, canvas element, video element, base texture
-     *
-     * @static
-     * @param {number|string|HTMLImageElement|HTMLCanvasElement|HTMLVideoElement|PIXI.BaseTexture}
-     *        source - Source to create texture from
-     * @return {PIXI.Texture} The newly created texture
-     */
-    static from(source, scaleMode, sourceScale)
-    {
-        var cacheId = null;
-
-        if (typeof source === 'string')
-        {
-            cacheId = source;
-        }
-        else
-        {
-            if(!source._pixiId)
-            {
-                source._pixiId = `pixiid_${uid()}`;
-            }
-
-            cacheId = source._pixiId;
-        }
-
-        let texture = TextureCache[cacheId];
-
-        if (!texture)
-        {
-            texture = new Texture(new BaseTexture(source));
-            texture.baseTexture.cacheId = cacheId;
-            TextureCache[cacheId] = texture;
-            BaseTextureCache[cacheId] = texture.baseTexture;
-        }
-        else
-        {
-          //  console.log(texture.baseTexture.width)
-        }
-        // lets assume its a base texture!
-        return texture;
-    }
-
-    /**
-     * Create a texture from a source and add to the cache.
-     *
-     * @static
-     * @param {HTMLImageElement|HTMLCanvasElement} source - The input source.
-     * @param {String} imageUrl - File name of texture, for cache and resolving resolution.
-     * @param {String} [name] - Human readible name for the texture cache. If no name is
-     *        specified, only `imageUrl` will be used as the cache ID.
-     * @return {PIXI.Texture} Output texture
-     */
-    static fromLoader(source, imageUrl, name)
-    {
-        // console.log('added from loader...')
-        const resource = new ImageResource(source);//.from(imageUrl, crossorigin);// document.createElement('img');
-
-        //  console.log('base resource ' + resource.width);
-        const baseTexture = new BaseTexture(resource,
-                                            settings.SCALE_MODE,
-                                            getResolutionOfUrl(imageUrl));
-
-        const texture = new Texture(baseTexture);
-
-        // No name, use imageUrl instead
-        if (!name)
-        {
-            name = imageUrl;
-        }
-
-        // lets also add the frame to pixi's global cache for fromFrame and fromImage fucntions
-        BaseTexture.addToCache(texture.baseTexture, name);
-        Texture.addToCache(texture, name);
-
-        // also add references by url if they are different.
-        if (name !== imageUrl)
-        {
-            BaseTexture.addToCache(texture.baseTexture, imageUrl);
-            Texture.addToCache(texture, imageUrl);
-        }
-
-        return texture;
-    }
-
-    /**
-     * Adds a Texture to the global TextureCache. This cache is shared across the whole PIXI object.
-     *
-     * @static
-     * @param {PIXI.Texture} texture - The Texture to add to the cache.
-     * @param {string} id - The id that the Texture will be stored against.
-     */
-    static addToCache(texture, id)
-    {
-        if (id)
-        {
-            if (texture.textureCacheIds.indexOf(id) === -1)
-            {
-                texture.textureCacheIds.push(id);
-            }
-
-            // @if DEBUG
-            /* eslint-disable no-console */
-            if (TextureCache[id])
-            {
-                console.warn(`Texture added to the cache with an id [${id}] that already had an entry`);
-            }
-            /* eslint-enable no-console */
-            // @endif
-
-            TextureCache[id] = texture;
-        }
-    }
-
-    /**
-     * Remove a Texture from the global TextureCache.
-     *
-     * @static
-     * @param {string|PIXI.Texture} texture - id of a Texture to be removed, or a Texture instance itself
-     * @return {PIXI.Texture|null} The Texture that was removed
-     */
-    static removeFromCache(texture)
-    {
-        if (typeof texture === 'string')
-        {
-            const textureFromCache = TextureCache[texture];
-
-            if (textureFromCache)
-            {
-                const index = textureFromCache.textureCacheIds.indexOf(texture);
-
-                if (index > -1)
-                {
-                    textureFromCache.textureCacheIds.splice(index, 1);
-                }
-
-                delete TextureCache[texture];
-
-                return textureFromCache;
-            }
-        }
-        else
-        {
-            for (let i = 0; i < texture.textureCacheIds.length; ++i)
-            {
-                delete TextureCache[texture.textureCacheIds[i]];
-            }
-
-            texture.textureCacheIds.length = 0;
-
-            return texture;
-        }
-
-        return null;
-    }
-
-    /**
-     * The frame specifies the region of the base texture that this texture uses.
-     *
-     * @member {PIXI.Rectangle}
+     * @member {Rectangle}
      */
     get frame()
     {
@@ -512,28 +152,9 @@ export default class Texture extends components.DispatchesUpdateComponent(Object
     set frame(frame) // eslint-disable-line require-jsdoc
     {
         this._frame = frame;
+        this._explicitFrame = frame;
 
-        this.noFrame = false;
-
-        if (frame.x + frame.width > this.baseTexture.width || frame.y + frame.height > this.baseTexture.height)
-        {
-            throw new Error('Texture Error: frame does not fit inside the base Texture dimensions: '
-                + `X: ${frame.x} + ${frame.width} > ${this.baseTexture.width} `
-                + `Y: ${frame.y} + ${frame.height} > ${this.baseTexture.height}`);
-        }
-
-        // this.valid = frame && frame.width && frame.height && this.baseTexture.source && this.baseTexture.hasLoaded;
-        this.valid = frame && frame.width && frame.height && this.baseTexture.valid;
-
-        if (!this.trim && !this.rotate)
-        {
-            this.orig = frame;
-        }
-
-        if (this.valid)
-        {
-            this._updateUvs();
-        }
+        this.updateUVs();
     }
 
     /**
@@ -578,55 +199,143 @@ export default class Texture extends components.DispatchesUpdateComponent(Object
     {
         return this.orig.height;
     }
-}
 
-Texture.fromImage = Texture.from;
-Texture.fromSVG = Texture.from;
-Texture.fromCanvas = Texture.from;
-Texture.fromVideo = Texture.from;
-Texture.fromFrame = Texture.from;
+    /**
+     * Creates a new texture object that acts the same as this one.
+     *
+     * @return {Texture} The new texture
+     */
+    clone()
+    {
+        return new Texture(this.source, this._frame, this.orig, this.trim, this.rotate);
+    }
 
-function createWhiteTexture()
-{
-    const canvas = document.createElement('canvas');
+    /**
+     * Updates this texture on the gpu.
+     *
+     */
+    update()
+    {
+        super.update();
 
-    canvas.width = 10;
-    canvas.height = 10;
+        this.source.update();
+    }
 
-    const context = canvas.getContext('2d');
+    /**
+     * Updates the UVs of this texture. If you change the frame dimensions, without
+     * reassigning the {@link Texture#frame} property you will need to call this function.
+     *
+     * Calling this function will also call {@link Texture#update} and dispatch the update signal.
+     *
+     */
+    updateUVs()
+    {
+        // @ifdef DEBUG
+        const v = this._frame;
 
-    context.fillStyle = 'white';
-    context.fillRect(0, 0, 10, 10);
+        debug.ASSERT(
+            v.x >= 0 && v.y >= 0 && v.x + v.width <= this.source.width && v.y + v.height <= this.source.height,
+            'Frame for texture doesn\'t fit within the source size.',
+            v
+        );
+        // @endif
 
-    return new Texture(new BaseTexture(new CanvasResource(canvas)));
-}
+        if (!this.trim && this.rotate % (Math.PI * 2) === 0)
+        {
+            this.orig = this._frame;
+        }
 
-function removeAllHandlers(tex)
-{
-    tex.destroy = function _emptyDestroy() { /* empty */ };
-    tex.on = function _emptyOn() { /* empty */ };
-    tex.once = function _emptyOnce() { /* empty */ };
-    tex.emit = function _emptyEmit() { /* empty */ };
+        if (this.ready)
+        {
+            this._uvs.set(this._frame, this.source, this.rotate);
+            this.update();
+        }
+    }
+
+    /**
+     * Destroys this texture
+     *
+     * @param {boolean} destroySource Whether to destroy the texture source as well
+     */
+    destroy(destroySource)
+    {
+        super.destroy();
+
+        if (destroySource)
+        {
+            this.source.destroy();
+        }
+
+        if (this._onSourceReadyBinding)
+        {
+            this._onSourceReadyBinding.detach();
+            this._onSourceReadyBinding = null;
+        }
+
+        if (this._onSourceUpdateBinding)
+        {
+            this._onSourceUpdateBinding.detach();
+            this._onSourceUpdateBinding = null;
+        }
+
+        this.source = null;
+        this.trim = null;
+        this.orig = null;
+
+        this._frame = null;
+        this._uvs = null;
+    }
+
+    /**
+     * Called when the base texture is updated
+     *
+     * @private
+     */
+    _onSourceReady()
+    {
+        if (!this._explicitFrame)
+        {
+            this._frame = new Rectangle(0, 0, this.source.width, this.source.height);
+
+            this._onSourceUpdateBinding = this.source.onUpdate.add(this._onSourceUpdate, this);
+        }
+        else
+        {
+            this._frame = this._explicitFrame;
+        }
+
+        this.updateUVs();
+    }
+
+    /**
+     * Helper function that creates a Texture object from the given image url.
+     * If the image is not in the texture cache it will be  created and loaded.
+     *
+     * TODO (cengler): Create jsdoc interface to use as type of sourceOptions and resourceOptions.
+     *
+     * @static
+     * @param {string} imageUrl The image url of the texture
+     * @param {*} sourceOptions TODO
+     * @param {*} resourceOptions TODO
+     * @return {Texture} The newly created texture
+     */
+    static from(imageUrl, sourceOptions, resourceOptions)
+    {
+        return new Texture(
+            new TextureSource(
+                createResource(imageUrl, resourceOptions),
+                sourceOptions
+            )
+        );
+    }
 }
 
 /**
- * An empty texture, used often to not have to create multiple empty textures.
- * Can not be destroyed.
+ * An empty texture.
  *
  * @static
  * @constant
  */
-Texture.EMPTY = new Texture(new BaseTexture());
-removeAllHandlers(Texture.EMPTY);
-removeAllHandlers(Texture.EMPTY.baseTexture);
-
-/**
- * A white texture of 10x10 size, used for graphics and other things
- * Can not be destroyed.
- *
- * @static
- * @constant
- */
-Texture.WHITE = createWhiteTexture();
-removeAllHandlers(Texture.WHITE);
-removeAllHandlers(Texture.WHITE.baseTexture);
+Texture.EMPTY = new Texture(new TextureSource(new BufferResource(new Uint8Array(0))));
+Texture.EMPTY.destroy = function _emptyDestroy() { /* empty */ };
+Texture.EMPTY.source.destroy = function _emptyDestroy() { /* empty */ };

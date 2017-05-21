@@ -3,6 +3,9 @@ import TextureResource from './TextureResource';
 
 export default class ImageResource extends TextureResource
 {
+    /**
+     * @param {HTMLImageElement|ImageBitmap} source The drawing source.
+     */
     constructor(source)
     {
         super(source);
@@ -74,7 +77,7 @@ export default class ImageResource extends TextureResource
         this.source.src = '';
     }
 
-    static from(url, crossorigin)
+    static fromUrl(url, crossorigin)
     {
         var image = new Image();
 

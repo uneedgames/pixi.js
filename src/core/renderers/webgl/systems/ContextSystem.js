@@ -75,13 +75,16 @@ export default class ContextSystem extends WebGLSystem
      */
     createContext(canvas, options)
     {
-        var gl = canvas.getContext('webgl', options) ||
-                 canvas.getContext('experimental-webgl', options);
+        var gl = canvas.getContext('webgl2', options)
+            || canvas.getContext('experimental-webgl2', options)
+            || canvas.getContext('webgl', options)
+            || canvas.getContext('experimental-webgl', options)
+            || canvas.getContext('moz-webgl', options)
+            || canvas.getContext('fake-webgl', options);
 
         if (!gl)
         {
-            // fail, not able to get a context
-            throw new Error('This browser does not support webGL. Try using the canvas renderer');
+            throw new Error('This browser does not support WebGL.');
         }
 
         return gl;

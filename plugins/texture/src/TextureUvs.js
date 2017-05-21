@@ -1,13 +1,11 @@
-import GroupD8 from '../math/GroupD8';
-
 /**
  * A standard object to store the Uvs of a texture
  *
  * @class
  * @private
- * @memberof PIXI
+ * @memberof texture
  */
-export default class TextureUvs
+export default class TextureUVs
 {
     /**
      *

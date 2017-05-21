@@ -122,7 +122,7 @@ export default class SVGResource extends TextureResource
         this.resolve(this);
     }
 
-    static from(url, crossorigin)
+    static fromUrl(url, crossorigin)
     {
         return new SVGResource(url);
     }

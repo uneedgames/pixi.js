@@ -765,7 +765,7 @@ export default class Graphics extends Container
 
         if (!this._spriteRect)
         {
-            this._spriteRect = new Sprite(new Texture(Texture.WHITE));
+            this._spriteRect = new Sprite(createWhiteTexture());
         }
 
         const sprite = this._spriteRect;
@@ -1161,3 +1161,18 @@ export default class Graphics extends Container
 }
 
 Graphics._SPRITE_TEXTURE = null;
+
+function createWhiteTexture()
+{
+    const canvas = document.createElement('canvas');
+
+    canvas.width = 10;
+    canvas.height = 10;
+
+    const context = canvas.getContext('2d');
+
+    context.fillStyle = 'white';
+    context.fillRect(0, 0, 10, 10);
+
+    return Texture.from(canvas);
+}

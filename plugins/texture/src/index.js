@@ -1,4 +1,4 @@
-/** @namespace textures */
+/** @namespace texture */
 
 export { default as Texture } from './Texture';
 export { default as TextureComponent } from './TextureComponent';
