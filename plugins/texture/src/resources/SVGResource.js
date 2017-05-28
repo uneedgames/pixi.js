@@ -1,54 +1,96 @@
-import {
-    decomposeDataUri, getSvgSize, uid
-} from '../../utils';
 import TextureResource from './TextureResource';
+import ImageResource from './ImageResource';
+import { utils } from '@pixi/core';
 
+const SVG_SIZE = /<svg[^>]*(?:\s(width|height)=('|")(\d*(?:\.\d+)?)(?:px)?('|"))[^>]*(?:\s(width|height)=('|")(\d*(?:\.\d+)?)(?:px)?('|"))[^>]*>/i; // eslint-disable-line max-len
 
+/**
+ * @class
+ * @memberof texture
+ */
 export default class SVGResource extends TextureResource
 {
-    constructor(svgSource, scale)
+    /**
+     * @param {string|Image} data The string source to load the svg from (XML or Url), or an Image to use as the source.
+     * @param {object} options Extra options
+     * @param {number} options.scale The scale of the svg to use.
+     * @param {number} options.width The original width of the SVG image, defauts to being auto-detected from `data`.
+     * @param {number} options.height The original height of the SVG image, defauts to being auto-detected from `data`.
+     */
+    constructor(data, options)
     {
         super();
 
-        this.svgSource = svgSource;
-        this.scale = 1 || scale;
-        this.uploadable = true;
+        this.scale = (options && options.scale) || 1;
 
-        this.resolve = null;
+        this.svgSource = null;
+        this.svgWidth = (options && options.width) || 0;
+        this.svgHeight = (options && options.height) || 0;
 
-        this.load = new Promise((resolve, reject) => {
+        if (typeof data === 'string')
+        {
+            const dataUri = utils.decomposeDataUri(data);
 
-            this.resolve = resolve;
-            this._loadSvgSourceUsingXhr();
-
-        })
+            // if it matched regex, assume this is a data uri
+            if (dataUri)
+            {
+                this._loadFromDataUri(dataUri);
+            }
+            // otherwise if it starts with '<svg' we assume it is XML source
+            else if (data.indexOf('<svg') === 0)
+            {
+                this._loadFromString(data);
+            }
+            // otherwise just assume it is a URL
+            else
+            {
+                this._loadFromXhr(data);
+            }
+        }
+        else if (data instanceof Image)
+        {
+            this._loadFromImage(data);
+        }
     }
 
     /**
-     * Checks if `source` is an SVG image and whether it's loaded via a URL or a data URI. Then calls
-     * `_loadSvgSourceUsingDataUri` or `_loadSvgSourceUsingXhr`.
+     * Reads an SVG string from data URI and then calls `_loadSvgSourceUsingString`.
+     *
+     * @private
+     * @param {utils.DecomposedDataUri} dataUri The decomposed data uri info.
      */
-    _loadSvgSource()
+    _loadFromDataUri(dataUri)
     {
-        const dataUri = decomposeDataUri(this.svgSource);
+        let svgString;
 
-        if (dataUri)
+        if (dataUri.encoding === 'base64')
         {
-            this._loadSvgSourceUsingDataUri(dataUri);
+            if (!atob)
+            {
+                this.onError.dispatch(new Error('Your browser doesn\'t support base64 conversions.'), this);
+
+                return;
+            }
+
+            svgString = atob(dataUri.data);
         }
         else
         {
-            // We got an URL, so we need to do an XHR to check the svg size
-            this._loadSvgSourceUsingXhr();
+            svgString = dataUri.data;
         }
+
+        this._loadFromString(svgString);
     }
 
     /**
-     * Loads an SVG string from `imageUrl` using XHR and then calls `_loadSvgSourceUsingString`.
+     * Loads an SVG string from `imageUrl` using XHR and then calls `_loadFromString`.
+     *
+     * @private
+     * @param {string} url The url to load from
      */
-    _loadSvgSourceUsingXhr()
+    _loadFromXhr(url)
     {
-        const svgXhr = new XMLHttpRequest();
+        const xhr = new XMLHttpRequest();
 
         // This throws error on IE, so SVG Document can't be used
         // svgXhr.responseType = 'document';
@@ -57,75 +99,133 @@ export default class SVGResource extends TextureResource
         // but overrideMimeType() can be used to force the response to be parsed as XML
         // svgXhr.overrideMimeType('image/svg+xml');
 
-        svgXhr.onload = () =>
+        xhr.addEventListener('load', () =>
         {
-            if (svgXhr.readyState !== svgXhr.DONE || svgXhr.status !== 200)
+            if (xhr.readyState !== xhr.DONE || xhr.status !== 200)
             {
-                throw new Error('Failed to load SVG using XHR.');
+                this.onError.dispatch(new Error('Failed to load SVG using XHR.'), this, xhr);
+
+                return;
             }
 
-            this._loadSvgSourceUsingString(svgXhr.response);
-        };
+            this._loadFromString(xhr.responseText);
+        });
 
-        svgXhr.onerror = () => this.emit('error', this);
+        xhr.addEventListener('error', () =>
+        {
+            this.onError.dispatch(new Error('Failed to load SVG using XHR.'), this, xhr);
+        });
 
-        svgXhr.open('GET', this.svgSource, true);
-        svgXhr.send();
+        xhr.addEventListener('abort', () =>
+        {
+            this.onError.dispatch(new Error('SVG\'s XHR load was aborted.'), this, xhr);
+        });
+
+        xhr.addEventListener('timeout', () =>
+        {
+            this.onError.dispatch(new Error('SVG\'s XHR load timed out.'), this, xhr);
+        });
+
+        xhr.open('GET', url, true);
+        xhr.send();
     }
 
     /**
      * Loads texture using an SVG string. The original SVG Image is stored as `origSource` and the
      * created canvas is the new `source`. The SVG is scaled using `sourceScale`. Called by
-     * `_loadSvgSourceUsingXhr` or `_loadSvgSourceUsingDataUri`.
+     * `_loadFromXhr` or `_loadFromDataUri`.
      *
-     * @param  {string} svgString SVG source as string
-     *
-     * @fires loaded
+     * @private
+     * @param {string} sourceXML SVG source as string
      */
-    _loadSvgSourceUsingString(svgString)
+    _loadFromString(sourceXML)
     {
-        const svgSize = getSvgSize(svgString);
+        const size = SVGResource.getSvgSize(sourceXML);
 
-
-        // TODO do we need to wait for this to load?
-        // seems instant!
-        //
-        const tempImage =  new Image();
-        tempImage.src = 'data:image/svg+xml,' + svgString;
-
-        const svgWidth = svgSize.width;
-        const svgHeight = svgSize.height;
-
-        if (!svgWidth || !svgHeight)
+        if (size.width === 0 || size.height === 0)
         {
-            throw new Error('The SVG image must have width and height defined (in pixels), canvas API needs them.');
+            this.onError.dispatch(new Error('The SVG source xml must have width/height defined (in pixels).'), this);
+
+            return;
         }
 
-        // Scale realWidth and realHeight
-        this.width = Math.round(svgWidth * this.scale);
-        this.height = Math.round(svgHeight * this.scale);
+        const img = new Image();
 
-        // Create a canvas element
-        const canvas = document.createElement('canvas');
+        img.src = `data:image/svg+xml,${sourceXML}`;
 
-        canvas.width = this.width;
-        canvas.height = this.height;
-        canvas._pixiId = `canvas_${uid()}`;
-
-        // Draw the Svg to the canvas
-        canvas
-            .getContext('2d')
-            .drawImage(tempImage, 0, 0, svgWidth, svgHeight, 0, 0, this.width, this.height);
-
-        this.source = canvas;
-
-        this.resolve(this);
+        this._loadFromImage(img, size.width, size.height);
     }
 
-    static fromUrl(url, crossorigin)
+    /**
+     * Loads texture from an Image element.
+     *
+     * @private
+     * @param {Image} image The image element to load from.
+     * @param {number} width The width to use as the source width, defaults to the width of the image after loading.
+     * @param {number} height The height to use as the source height, defaults to the height of the image after loading.
+     */
+    _loadFromImage(image, width, height)
     {
-        return new SVGResource(url);
+        this.svgSource = image;
+
+        ImageResource.waitForImageLoad(image, (err) =>
+        {
+            if (err)
+            {
+                this.onError.dispatch(err, this, image);
+
+                return;
+            }
+
+            this.svgWidth = this.svgWidth || width || image.width;
+            this.svgHeight = this.svgHeight || height || image.height;
+
+            // Scale width and height
+            this.width = Math.round(this.svgWidth * this.scale);
+            this.height = Math.round(this.svgHeight * this.scale);
+
+            // Create a canvas element
+            const canvas = document.createElement('canvas');
+
+            canvas.width = this.width;
+            canvas.height = this.height;
+
+            // Draw the Svg to the canvas
+            canvas
+                .getContext('2d')
+                .drawImage(image, 0, 0, this.svgWidth, this.svgHeight, 0, 0, this.width, this.height);
+
+            this.data = canvas;
+            this.onReady.dispatch(this);
+        });
     }
 
+    /**
+     * Typedef for SVGSize object.
+     *
+     * @typedef {object} SVGSize
+     * @property {width} width
+     * @property {height} height
+     */
 
+    /**
+     * Get size from an svg string using regexp.
+     *
+     * @static
+     * @param {string} sourceXML The source XML of an SVG as a string.
+     * @return {SVGSize} The size of the SVG.
+     */
+    static getSvgSize(sourceXML)
+    {
+        const sizeMatch = SVG_SIZE.exec(sourceXML);
+        const size = { width: 0, height: 0 };
+
+        if (sizeMatch)
+        {
+            size[sizeMatch[1].toLowerCase()] = Math.round(parseFloat(sizeMatch[3]));
+            size[sizeMatch[5].toLowerCase()] = Math.round(parseFloat(sizeMatch[7]));
+        }
+
+        return size;
+    }
 }

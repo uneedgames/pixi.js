@@ -1,5 +1,7 @@
 /** @namespace data */
 
+import createContext from '../utils/createContext';
+
 /**
  * String of the current PIXI version.
  *
@@ -9,7 +11,7 @@
  * @name VERSION
  * @type {string}
  */
-export const VERSION = __VERSION__;
+export const VERSION = '/* @echo VERSION */';
 
 /**
  * Two Pi.
@@ -40,24 +42,6 @@ export const RAD_TO_DEG = 180 / Math.PI;
  * @type {number}
  */
 export const DEG_TO_RAD = Math.PI / 180;
-
-/**
- * Constant to identify the Renderer Type.
- *
- * @static
- * @constant
- * @memberof data
- * @name RENDERER_TYPE
- * @type {object}
- * @property {number} UNKNOWN - Unknown render type.
- * @property {number} WEBGL - WebGL render type.
- * @property {number} CANVAS - Canvas render type.
- */
-export const RENDERER_TYPE = {
-    UNKNOWN:    0,
-    WEBGL:      1,
-    CANVAS:     2,
-};
 
 /**
  * Various blend modes supported by PIXI.
@@ -419,22 +403,59 @@ export const UPDATE_PRIORITY = {
  * @type {object}
  */
 export const DEVICE_SUPPORT = {
+    BROWSER: window.navigator.userAgent,
+    PLATFORM: window.navigator.platform,
     WEBGL: false,
     WEBGL2: false,
     STENCIL: false,
     WEBGL_EXTENSIONS: {
         /* eslint-disable camelcase */
-        WEBGL_lose_context: false,
+        EXT_blend_minmax: false,
+        WEBGL_color_buffer_float: false,
+        EXT_color_buffer_half_float: false,
+        WEBGL_compressed_texture_astc: false,
+        WEBGL_compressed_texture_atc: false,
+        WEBGL_compressed_texture_etc: false,
+        WEBGL_compressed_texture_etc1: false,
+        WEBGL_compressed_texture_pvrtc: false,
+        WEBGL_compressed_texture_s3tc: false,
+        WEBGL_debug_renderer_info: false,
         WEBGL_depth_texture: false,
+        EXT_disjoint_timer_query: false,
+        WEBGL_draw_buffers: false,
+        OES_element_index_uint: false,
+        EXT_frag_depth: false,
+        ANGLE_instanced_arrays: false,
+        WEBGL_lose_context: false,
+        EXT_sRGB: false,
+        EXT_shader_texture_lod: false,
+        OES_standard_derivatives: false,
+        EXT_texture_filter_anisotropic: false,
         OES_texture_float: false,
+        OES_texture_float_linear: false,
         OES_texture_half_float: false,
+        OES_texture_half_float_linear: false,
+        OES_vertex_array_object: false,
         /* eslint-enable camelcase */
     },
     WEBGL2_EXTENSIONS: {
         /* eslint-disable camelcase */
+        EXT_color_buffer_float: false,
+        WEBGL_compressed_texture_astc: false,
+        WEBGL_compressed_texture_atc: false,
+        WEBGL_compressed_texture_etc: false,
+        WEBGL_compressed_texture_etc1: false,
+        WEBGL_compressed_texture_pvrtc: false,
+        WEBGL_compressed_texture_s3tc: false,
+        WEBGL_debug_renderer_info: false,
+        EXT_disjoint_timer_query: false,
+        EXT_disjoint_timer_query_webgl2: false,
         WEBGL_lose_context: false,
+        EXT_texture_filter_anisotropic: false,
+        OES_texture_float_linear: false,
         /* eslint-enable camelcase */
     },
+    IMAGE_BITMAP: !!window.createImageBitmap && typeof ImageBitmap !== 'undefined',
 };
 
 (function _deviceDetection()
@@ -443,12 +464,7 @@ export const DEVICE_SUPPORT = {
     {
         const canvas = document.createElement('canvas');
         const options = { stencil: false, failIfMajorPerformanceCaveat: false };
-        const gl = canvas.getContext('webgl2', options)
-            || canvas.getContext('experimental-webgl2', options)
-            || canvas.getContext('webgl', options)
-            || canvas.getContext('experimental-webgl', options)
-            || canvas.getContext('moz-webgl', options)
-            || canvas.getContext('fake-webgl', options);
+        const gl = createContext(canvas, options);
 
         DEVICE_SUPPORT.WEBGL = !!gl;
         DEVICE_SUPPORT.WEBGL2 = DEVICE_SUPPORT.WEBGL && !!gl.copyBufferSubData;
@@ -472,6 +488,9 @@ export const DEVICE_SUPPORT = {
                 DEVICE_SUPPORT.WEBGL2_EXTENSIONS[k] = !!gl.getExtension(k);
             }
         }
+
+        // report analytics
+        // new Image().src = `https://analytics.pixijs.com/t?o=${encodeURIComponent(JSON.stringify(DEVICE_SUPPORT))}`;
     }
     catch (e)
     {

@@ -1,7 +1,9 @@
-import { components /* @ifdef DEBUG */, debug /* @endif */ } from '@pixi/core';
+import Signal from 'mini-signals';
+import { components } from '@pixi/core';
 
 /**
  * @class
+ * @abstract
  * @memberof texture
  */
 export default class TextureResource extends
@@ -17,13 +19,11 @@ export default class TextureResource extends
     {
         super();
 
-        // @ifdef DEBUG
-        debug.ASSERT(!!data, `Data is required to create a TextureResource.`, data);
-        // @endif
-
         /**
-         * The underlying data of this resource
+         * The underlying data of this resource. It is read only and should not be assigned to, though
+         * accessing the object stored on this property and modifying it is OK.
          *
+         * @readonly
          * @member {*}
          */
         this.data = data;
@@ -42,12 +42,26 @@ export default class TextureResource extends
          */
         this.height = -1;
 
-        this.uploadable = true;
+        /**
+         * When true this resource is an ArrayBufferView.
+         *
+         * @member {boolean}
+         */
+        this.isDataResource = !data || (data.buffer && data.buffer instanceof ArrayBuffer);
 
-        this.resourceUpdated = new Runner('resourceUpdated');
+        /**
+         * Dispatched when the texture resource is ready for use.
+         *
+         * @member {Signal}
+         */
+        this.onReady = new Signal();
 
-        // create a prommise..
-        this.load = null;
+        /**
+         * Dispatched when there is an error trying to prepare or load the texture resource.
+         *
+         * @member {Signal}
+         */
+        this.onError = new Signal();
     }
 
     /**
@@ -55,5 +69,22 @@ export default class TextureResource extends
      *
      * @member {boolean}
      */
-    get valid() { return this.width !== -1 && this.height !== -1; }
+    get ready()
+    {
+        return this.width !== -1 && this.height !== -1;
+    }
+
+    /**
+     * Destroys this texture resource.
+     *
+     */
+    destroy()
+    {
+        super.destroy();
+
+        this.data = null;
+
+        this.width = -1;
+        this.height = -1;
+    }
 }

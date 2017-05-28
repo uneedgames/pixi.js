@@ -1,4 +1,4 @@
-import { TYPES } from '../data/const';
+import { TYPES } from '../data';
 
 /**
  * Holds the information for a single attribute structure required to render geometry.

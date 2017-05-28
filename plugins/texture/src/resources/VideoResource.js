@@ -1,16 +1,34 @@
 import TextureResource from './TextureResource';
-import * as ticker from '../../ticker';
-import {
-    uid
-} from '../../utils';
 
+/**
+ * @class
+ * @memberof texture
+ */
 export default class VideoResource extends TextureResource
 {
-    constructor(source)
+    /**
+     * @param {HTMLVideoElement} data The video element to use.
+     */
+    constructor(data)
     {
-        super(source);
+        super(data);
 
+        /**
+         * Tracks whether we should be automatically update the texture each frame.
+         *
+         * @private
+         * @member {boolean}
+         * @default true
+         */
         this._autoUpdate = true;
+
+        /**
+         * Tracks whether we are currently updating the texture automatically.
+         *
+         * @private
+         * @member {boolean}
+         * @default false
+         */
         this._isAutoUpdating = false;
 
         /**
@@ -22,159 +40,22 @@ export default class VideoResource extends TextureResource
          */
         this.autoPlay = true;
 
-        this.update = this.update.bind(this);
-        this._onCanPlay = this._onCanPlay.bind(this);
+        this._boundOnPlayStart = () => this._onPlayStart();
+        this._boundOnPlayStop = () => this._onPlayStop();
+        this._boundOnCanPlay = () => this._onCanPlay();
 
-        if ((source.readyState === source.HAVE_ENOUGH_DATA || source.readyState === source.HAVE_FUTURE_DATA)
-        && source.width && source.height)
-        {
-            source.complete = true;
-        }
-
-        source.addEventListener('play', this._onPlayStart.bind(this));
-        source.addEventListener('pause', this._onPlayStop.bind(this));
-
+        data.addEventListener('play', this._boundOnPlayStart);
+        data.addEventListener('pause', this._boundOnPlayStop);
 
         if (!this._isSourceReady())
         {
-            source.addEventListener('canplay', this._onCanPlay);
-            source.addEventListener('canplaythrough', this._onCanPlay);
+            data.addEventListener('canplay', this._boundOnCanPlay);
+            data.addEventListener('canplaythrough', this._boundOnCanPlay);
         }
         else
         {
             this._onCanPlay();
         }
-
-        this.load = new Promise((resolve, reject) => {
-
-            this.resolve = resolve;
-
-            if(this.loaded)
-            {
-                this.resolve(this);
-            }
-        })
-    }
-
-    update()
-    {
-        this.resourceUpdated.emit();
-    }
-
-    /**
-     * Returns true if the underlying source is playing.
-     *
-     * @private
-     * @return {boolean} True if playing.
-     */
-    _isSourcePlaying()
-    {
-        const source = this.source;
-
-        return (source.currentTime > 0 && source.paused === false && source.ended === false && source.readyState > 2);
-    }
-
-    /**
-     * Returns true if the underlying source is ready for playing.
-     *
-     * @private
-     * @return {boolean} True if ready.
-     */
-    _isSourceReady()
-    {
-        return this.source.readyState === 3 || this.source.readyState === 4;
-    }
-
-    /**
-     * Runs the update loop when the video is ready to play
-     *
-     * @private
-     */
-    _onPlayStart()
-    {
-        // Just in case the video has not received its can play even yet..
-        if (!this.loaded)
-        {
-            this._onCanPlay();
-        }
-
-        if (!this._isAutoUpdating && this.autoUpdate)
-        {
-            ticker.shared.add(this.update, this);
-            this._isAutoUpdating = true;
-        }
-    }
-
-    /**
-     * Fired when a pause event is triggered, stops the update loop
-     *
-     * @private
-     */
-    _onPlayStop()
-    {
-        if (this._isAutoUpdating)
-        {
-            ticker.shared.remove(this.update, this);
-            this._isAutoUpdating = false;
-        }
-    }
-
-    /**
-     * Fired when the video is loaded and ready to play
-     *
-     * @private
-     */
-    _onCanPlay()
-    {
-
-        if (this.source)
-        {
-            this.source.removeEventListener('canplay', this._onCanPlay);
-            this.source.removeEventListener('canplaythrough', this._onCanPlay);
-
-            this.width = this.source.videoWidth;
-            this.height = this.source.videoHeight;
-
-            // prevent multiple loaded dispatches..
-            if (!this.loaded)
-            {
-                this.loaded = true;
-                if(this.resolve)
-                {
-                    this.resolve(this);
-                }
-            }
-
-            if (this._isSourcePlaying())
-            {
-                this._onPlayStart();
-            }
-            else if (this.autoPlay)
-            {
-                this.source.play();
-            }
-
-        }
-    }
-
-    /**
-     * Destroys this texture
-     *
-     */
-    destroy()
-    {
-        if (this._isAutoUpdating)
-        {
-            ticker.shared.remove(this.update, this);
-        }
-/*
-        if (this.source && this.source._pixiId)
-        {
-            delete BaseTextureCache[this.source._pixiId];
-            delete this.source._pixiId;
-        }
-*/
-  //      super.destroy();
     }
 
     /**
@@ -207,18 +88,134 @@ export default class VideoResource extends TextureResource
     }
 
     /**
+     * Destroys this texture
+     *
+     */
+    destroy()
+    {
+        this.data.removeEventListener('play', this._boundOnPlayStart);
+        this.data.removeEventListener('pause', this._boundOnPlayStop);
+        this.data.removeEventListener('canplay', this._boundOnCanPlay);
+        this.data.removeEventListener('canplaythrough', this._boundOnCanPlay);
+
+        super.destroy();
+
+        this._boundOnPlayStart = null;
+        this._boundOnPlayStop = null;
+        this._boundOnCanPlay = null;
+        this._boundOnCanPlay = null;
+
+        if (this._isAutoUpdating)
+        {
+            ticker.shared.remove(this.update, this);
+        }
+    }
+
+    /**
+     * Returns true if the underlying source is playing.
+     *
+     * @private
+     * @return {boolean} True if playing.
+     */
+    _isSourcePlaying()
+    {
+        const source = this.data;
+
+        return (source.currentTime > 0 && source.paused === false && source.ended === false && source.readyState > 2);
+    }
+
+    /**
+     * Returns true if the underlying source is ready for playing.
+     *
+     * @private
+     * @return {boolean} True if ready.
+     */
+    _isSourceReady()
+    {
+        return this.data.readyState === this.data.HAVE_ENOUGH_DATA
+            || this.data.readyState === this.data.HAVE_FUTURE_DATA;
+    }
+
+    /**
+     * Runs the update loop when the video is ready to play
+     *
+     * @private
+     */
+    _onPlayStart()
+    {
+        // Just in case the video has not received its can play even yet..
+        if (!this.ready)
+        {
+            this._onCanPlay();
+        }
+
+        if (!this._isAutoUpdating && this.autoUpdate)
+        {
+            ticker.shared.add(this.update, this);
+            this._isAutoUpdating = true;
+        }
+    }
+
+    /**
+     * Fired when a pause event is triggered, stops the update loop
+     *
+     * @private
+     */
+    _onPlayStop()
+    {
+        if (this._isAutoUpdating)
+        {
+            ticker.shared.remove(this.update, this);
+            this._isAutoUpdating = false;
+        }
+    }
+
+    /**
+     * Fired when the video is loaded and ready to play
+     *
+     * @private
+     */
+    _onCanPlay()
+    {
+        if (this.data)
+        {
+            this.data.removeEventListener('canplay', this._boundOnCanPlay);
+            this.data.removeEventListener('canplaythrough', this._boundOnCanPlay);
+
+            const emitReady = !this.ready;
+
+            this.width = this.data.videoWidth;
+            this.height = this.data.videoHeight;
+
+            if (emitReady)
+            {
+                this.onReady.dispatch(this);
+            }
+
+            if (this._isSourcePlaying())
+            {
+                this._onPlayStart();
+            }
+            else if (this.autoPlay)
+            {
+                this.data.play();
+            }
+        }
+    }
+
+    /**
      * Helper function that creates a new BaseTexture based on the given video element.
      * This BaseTexture can then be used to create a texture
      *
      * @static
-     * @param {string|object|string[]|object[]} videoSrc - The URL(s) for the video.
-     * @param {string} [videoSrc.src] - One of the source urls for the video
-     * @param {string} [videoSrc.mime] - The mimetype of the video (e.g. 'video/mp4'). If not specified
+     * @param {string|object|string[]|object[]} videoSrc The URL(s) for the video.
+     * @param {string} [videoSrc.src] One of the source urls for the video
+     * @param {string} [videoSrc.mime] The mimetype of the video (e.g. 'video/mp4'). If not specified
      *  the url's extension will be used as the second part of the mime type.
-     * @param {number} scaleMode - See {@link PIXI.SCALE_MODES} for possible values
+     * @param {object} options Options to pass to the ctor
      * @return {PIXI.VideoBaseTexture} Newly created VideoBaseTexture
      */
-    static fromUrl(videoSrc, scaleMode)
+    static fromUrl(videoSrc, options)
     {
         const video = document.createElement('video');
 
@@ -241,12 +238,9 @@ export default class VideoResource extends TextureResource
 
         video.load();
 
-        return new VideoResource(video, scaleMode);
+        return new VideoResource(video, options);
     }
-
-
 }
-
 
 function createSource(path, type)
 {

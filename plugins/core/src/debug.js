@@ -27,6 +27,8 @@ export function ASSERT(bool, message, data)
         {
             console.error(`[PIXI ASSERT] ${message}`);
         }
+
+        debugger; // eslint-disable-line no-debugger,no-restricted-syntax
     }
 }
 

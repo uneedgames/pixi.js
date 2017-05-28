@@ -1,25 +1,21 @@
 import TextureResource from './TextureResource';
 
+/**
+ * @class
+ * @memberof texture
+ */
 export default class CanvasResource extends TextureResource
 {
-    constructor(source)
+    /**
+     * @param {HTMLCanvasElement} data The drawing source.
+     */
+    constructor(data)
     {
-        super(source);
+        super(data);
 
-        this.loaded = true; // TODO rename to ready?
-        this.width = source.width;
-        this.height = source.height;
+        this.width = data.width;
+        this.height = data.height;
 
-        this.uploadable = true;
-
-        this.load = new Promise((resolve, reject) => {
-
-            resolve(this);
-        })
-    }
-
-    static from(canvas)
-    {
-        return new CanvasResource(canvas);
+        this.onReady.dispatch(this);
     }
 }

@@ -25,16 +25,6 @@ export default {
     TARGET_FPMS: 0.06,
 
     /**
-     * Default resolution / device pixel ratio of the renderer.
-     *
-     * @static
-     * @memberof PIXI.settings
-     * @type {number}
-     * @default 1
-     */
-    RESOLUTION: 1,
-
-    /**
      * Default filter resolution.
      *
      * @static
@@ -80,42 +70,6 @@ export default {
      */
     RETINA_PREFIX: /@([0-9\.]+)x/,
 
-    /**
-     * The default render options if none are supplied to {@link PIXI.WebGLRenderer}
-     * or {@link PIXI.CanvasRenderer}.
-     *
-     * @static
-     * @constant
-     * @memberof PIXI.settings
-     * @type {object}
-     * @property {HTMLCanvasElement} view=null
-     * @property {number} resolution=1
-     * @property {boolean} antialias=false
-     * @property {boolean} forceFXAA=false
-     * @property {boolean} autoResize=false
-     * @property {boolean} transparent=false
-     * @property {number} backgroundColor=0x000000
-     * @property {boolean} clearBeforeRender=true
-     * @property {boolean} preserveDrawingBuffer=false
-     * @property {boolean} roundPixels=false
-     * @property {number} width=800
-     * @property {number} height=600
-     * @property {boolean} legacy=false
-     */
-    RENDER_OPTIONS: {
-        view: null,
-        antialias: false,
-        forceFXAA: false,
-        autoResize: false,
-        transparent: false,
-        backgroundColor: 0x000000,
-        clearBeforeRender: true,
-        preserveDrawingBuffer: false,
-        roundPixels: false,
-        width: 800,
-        height: 600,
-        legacy: false,
-    },
 
     /**
      * Default transform type.

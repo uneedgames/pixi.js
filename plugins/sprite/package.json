@@ -1,8 +1,8 @@
 {
-  "name": "@fae/sprite",
+  "name": "@pixi/sprite",
   "version": "5.0.0",
   "description": "Adds support for 2D sprites.",
-  
+
   "license": "MIT",
   "main": "lib/index.js",
   "homepage": "http://pixijs.com/",

@@ -1,22 +1,18 @@
 import TextureResource from './TextureResource';
 
+/**
+ * @class
+ * @memberof texture
+ */
 export default class BufferResource extends TextureResource
 {
-    constructor(source)
+    /**
+     * @param {ArrayBufferView} data The drawing source.
+     */
+    constructor(data)
     {
-        super(source);
+        super(data);
 
-        this.uploadable = false;
-
-        this.load = new Promise((resolve, reject) => {
-
-            resolve(this);
-
-        })
-    }
-
-    static from(array)
-    {
-        return new BufferResource(array);
+        this.onReady.dispatch(this);
     }
 }

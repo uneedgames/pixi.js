@@ -268,7 +268,7 @@ export default class TextureSource extends
     }
 
     /**
-     * Destroys this base texture
+     * Destroys this texture source.
      *
      */
     destroy()
@@ -328,7 +328,7 @@ export default class TextureSource extends
      * @param {number} type The {@link data.TYPES} to use for the texture, by default this is auto-detected.
      * @return {TextureSource} The new base texture.
      */
-    static fromArrayBufferView(array, format = data.FORMATS.RGBA, type = 0)
+    static fromArrayBufferView(array, width = array.length, height = 1, format = data.FORMATS.RGBA, type = 0)
     {
         if (type === 0)
         {
@@ -353,8 +353,8 @@ export default class TextureSource extends
             new BufferResource(array),
             {
                 resolution: 1,
-                width: array.length,
-                height: 1,
+                width,
+                height,
                 scaleMode: data.SCALE_MODES.NEAREST,
                 wrapMode: data.WRAP_MODES.CLAMP,
                 format,

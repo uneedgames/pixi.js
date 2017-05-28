@@ -19,6 +19,7 @@ export default function UniqueIdentifierComponent(Base = Object)
             /**
              * The unique identifier of this object.
              *
+             * @readonly
              * @member {number}
              */
             this.uid = uid();

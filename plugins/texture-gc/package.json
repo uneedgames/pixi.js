@@ -1,8 +1,8 @@
 {
-  "name": "@pixi/texture",
+  "name": "@pixi/texture-gc",
   "version": "5.0.0",
-  "description": "Adds support for high-level texture management.",
-
+  "description": "Garbage collects texture from the GPU when they are no longer used",
+  
   "license": "MIT",
   "main": "lib/index.js",
   "homepage": "http://pixijs.com/",
