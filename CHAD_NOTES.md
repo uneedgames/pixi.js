@@ -14,6 +14,9 @@
 
 # Migration guide
 
+- Removed `SystemRenderer`
+- Removed `CanvasRenderer`
+- `WebGLRenderer` -> `Renderer`
 - `BaseTexture` -> `TextureSource`
     * `BaseTexture.from*()` -> `TextureSource.from()`
     * Constructor arguments are now `(resource, options)`
@@ -22,6 +25,8 @@
 - `SystemRenderer` -> `BaseRenderer`
 - Const migration `const.*` -> `data.*`
     * Removed `const.RENDERER_TYPE`
+    * `BLEND_MODES` are now WebGL blending related constants, rather than pixi IDs for a blend mode. Use the `BlendMode` class instead.
+        - Examples: `BLEND_MODES.NORMAL` -> `BlendMode.NORMAL`, `BLEND_MODES.ADD` -> `BlendMode.ADD`.
 - Settings migration
     * `settings.SCALE_MODE`         -> `TextureSource.defaultScaleMode`
     * `settings.WRAP_MODE`          -> `TextureSource.defaultWrapMode`
@@ -47,7 +52,7 @@ familiar to you, but read carefully because they may be different than you expec
     them, managers, and other systems. It does not create, destroy, or store these objects; but instead the objects are
     generally created/stored by the user. The objects that it operates upon share a common component or set of
     components that the system requires. Each system on a renderer is updated each frame.
-    * Example: The `TextureSystem` interacts with theuser-created Texture objects and uploads them via the `TextureManager`.
+    * Example: The `TextureSystem` interacts with the user-created Texture objects and uploads them via the `TextureManager`.
 - `Component` - A Component is a small, specific piece of reusable properties & functionality. Components
     enable us to create objects composed of multiple small reusable bits, increasing code reuse. modularity, and flexibility.
     The functionality in a component only controls that specific component's data, and doesn't interact with other components;
