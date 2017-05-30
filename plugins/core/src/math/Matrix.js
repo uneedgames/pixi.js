@@ -1,14 +1,38 @@
 import Point from './Point';
 
+// @ifdef DEBUG
+import debug from '../debug';
+// @endif
+
 /**
- * The pixi Matrix class as an object, which makes it a lot faster,
- * here is a representation of it :
- * | a | b | tx|
- * | c | d | ty|
- * | 0 | 0 | 1 |
+ * A 2d Matrix implementation.
+ *
+ * This Matrix is stored as an array with nine elements defined as:
+ *
+ * ```js
+ * [a, b, 0, c, d, 0, tx, ty, 1]
+ * ```
+ *
+ * This is an array representation for a 3x3 transformation matrix:
+ *
+ * ```
+ * | a  c  tx|
+ * | b  d  ty|
+ * | 0  0  1 |
+ * ```
+ *
+ * Since the last row is ignored so the operations are faster.
+ *
+ * For those unfamiliar with 3x3 transformation matrices, you could say that:
+ *
+ * - `a` and `d` affect scale,
+ * - `c` and `b` affect rotation, and
+ * - `tx` and `ty` affect translation.
+ *
+ * It is a bit more interconnected than that (especially with skew), but thats basic gist.
  *
  * @class
- * @memberof PIXI
+ * @memberof math
  */
 export default class Matrix
 {
@@ -22,65 +46,16 @@ export default class Matrix
      */
     constructor(a = 1, b = 0, c = 0, d = 1, tx = 0, ty = 0)
     {
-        /**
-         * @member {number}
-         * @default 1
-         */
-        this.a = a;
-
-        /**
-         * @member {number}
-         * @default 0
-         */
-        this.b = b;
-
-        /**
-         * @member {number}
-         * @default 0
-         */
-        this.c = c;
-
-        /**
-         * @member {number}
-         * @default 1
-         */
-        this.d = d;
-
-        /**
-         * @member {number}
-         * @default 0
-         */
-        this.tx = tx;
-
-        /**
-         * @member {number}
-         * @default 0
-         */
-        this.ty = ty;
-
-        this.array = null;
-    }
-
-    /**
-     * Creates a Matrix object based on the given array. The Element to Matrix mapping order is as follows:
-     *
-     * a = array[0]
-     * b = array[1]
-     * c = array[3]
-     * d = array[4]
-     * tx = array[2]
-     * ty = array[5]
-     *
-     * @param {number[]} array - The array that the matrix will be populated from.
-     */
-    fromArray(array)
-    {
-        this.a = array[0];
-        this.b = array[1];
-        this.c = array[3];
-        this.d = array[4];
-        this.tx = array[2];
-        this.ty = array[5];
+        this.array = new Float32Array(9);
+        this.array[0] = a;
+        this.array[1] = b;
+        this.array[2] = 0;
+        this.array[3] = c;
+        this.array[4] = d;
+        this.array[5] = 0;
+        this.array[6] = tx;
+        this.array[7] = ty;
+        this.array[8] = 1;
     }
 
     /**
@@ -97,58 +72,14 @@ export default class Matrix
      */
     set(a, b, c, d, tx, ty)
     {
-        this.a = a;
-        this.b = b;
-        this.c = c;
-        this.d = d;
-        this.tx = tx;
-        this.ty = ty;
+        this.array[0] = a;
+        this.array[1] = b;
+        this.array[3] = c;
+        this.array[4] = d;
+        this.array[6] = tx;
+        this.array[7] = ty;
 
         return this;
-    }
-
-    /**
-     * Creates an array from the current Matrix object.
-     *
-     * @param {boolean} transpose - Whether we need to transpose the matrix or not
-     * @param {Float32Array} [out=new Float32Array(9)] - If provided the array will be assigned to out
-     * @return {number[]} the newly created array which contains the matrix
-     */
-    toArray(transpose, out)
-    {
-        if (!this.array)
-        {
-            this.array = new Float32Array(9);
-        }
-
-        const array = out || this.array;
-
-        if (transpose)
-        {
-            array[0] = this.a;
-            array[1] = this.b;
-            array[2] = 0;
-            array[3] = this.c;
-            array[4] = this.d;
-            array[5] = 0;
-            array[6] = this.tx;
-            array[7] = this.ty;
-            array[8] = 1;
-        }
-        else
-        {
-            array[0] = this.a;
-            array[1] = this.c;
-            array[2] = this.tx;
-            array[3] = this.b;
-            array[4] = this.d;
-            array[5] = this.ty;
-            array[6] = 0;
-            array[7] = 0;
-            array[8] = 1;
-        }
-
-        return array;
     }
 
     /**
@@ -163,11 +94,17 @@ export default class Matrix
     {
         newPos = newPos || new Point();
 
+        const a = this.array[0];
+        const b = this.array[1];
+        const c = this.array[3];
+        const d = this.array[4];
+        const tx = this.array[6];
+        const ty = this.array[7];
         const x = pos.x;
         const y = pos.y;
 
-        newPos.x = (this.a * x) + (this.c * y) + this.tx;
-        newPos.y = (this.b * x) + (this.d * y) + this.ty;
+        newPos.x = (a * x) + (c * y) + tx;
+        newPos.y = (b * x) + (d * y) + ty;
 
         return newPos;
     }
@@ -184,13 +121,23 @@ export default class Matrix
     {
         newPos = newPos || new Point();
 
-        const id = 1 / ((this.a * this.d) + (this.c * -this.b));
+        const a = this.array[0];
+        const b = this.array[1];
+        const c = this.array[3];
+        const d = this.array[4];
+        const tx = this.array[6];
+        const ty = this.array[7];
 
+        // @ifdef DEBUG
+        debug.ASSERT((a * d) - (b * c), 'The determinant of a Matrix can not be 0 when applying inverse to a point.', this);
+        // @endif
+
+        const det = 1.0 / ((a * d) - (b * c));
         const x = pos.x;
         const y = pos.y;
 
-        newPos.x = (this.d * id * x) + (-this.c * id * y) + (((this.ty * this.c) - (this.tx * this.d)) * id);
-        newPos.y = (this.a * id * y) + (-this.b * id * x) + (((-this.ty * this.a) + (this.tx * this.b)) * id);
+        newPos.x = (d * det * x) + (-c * det * y) + (((ty * c) - (tx * d)) * det);
+        newPos.y = (a * det * y) + (-b * det * x) + (((-ty * a) + (tx * b)) * det);
 
         return newPos;
     }
@@ -204,8 +151,13 @@ export default class Matrix
      */
     translate(x, y)
     {
-        this.tx += x;
-        this.ty += y;
+        const a = this.array[0];
+        const b = this.array[1];
+        const c = this.array[3];
+        const d = this.array[4];
+
+        this.array[6] += (a * x) + (c * y);
+        this.array[7] += (b * x) + (d * y);
 
         return this;
     }
@@ -219,12 +171,10 @@ export default class Matrix
      */
     scale(x, y)
     {
-        this.a *= x;
-        this.d *= y;
-        this.c *= x;
-        this.b *= y;
-        this.tx *= x;
-        this.ty *= y;
+        this.array[0] *= x;
+        this.array[1] *= x;
+        this.array[3] *= y;
+        this.array[4] *= y;
 
         return this;
     }
@@ -237,19 +187,18 @@ export default class Matrix
      */
     rotate(angle)
     {
-        const cos = Math.cos(angle);
-        const sin = Math.sin(angle);
+        const a = this.array[0];
+        const b = this.array[1];
+        const c = this.array[3];
+        const d = this.array[4];
+        const sr = Math.sin(angle);
+        const cr = Math.cos(angle);
 
-        const a1 = this.a;
-        const c1 = this.c;
-        const tx1 = this.tx;
+        this.array[0] = (a * cr) + (c * sr);
+        this.array[1] = (b * cr) + (d * sr);
 
-        this.a = (a1 * cos) - (this.b * sin);
-        this.b = (a1 * sin) + (this.b * cos);
-        this.c = (c1 * cos) - (this.d * sin);
-        this.d = (c1 * sin) + (this.d * cos);
-        this.tx = (tx1 * cos) - (this.ty * sin);
-        this.ty = (tx1 * sin) + (this.ty * cos);
+        this.array[3] = (a * -sr) + (c * cr);
+        this.array[4] = (b * -sr) + (d * cr);
 
         return this;
     }
@@ -262,18 +211,26 @@ export default class Matrix
      */
     append(matrix)
     {
-        const a1 = this.a;
-        const b1 = this.b;
-        const c1 = this.c;
-        const d1 = this.d;
+        const a1 = this.array[0];
+        const b1 = this.array[1];
+        const c1 = this.array[3];
+        const d1 = this.array[4];
 
-        this.a = (matrix.a * a1) + (matrix.b * c1);
-        this.b = (matrix.a * b1) + (matrix.b * d1);
-        this.c = (matrix.c * a1) + (matrix.d * c1);
-        this.d = (matrix.c * b1) + (matrix.d * d1);
+        const a2 = matrix.array[0];
+        const b2 = matrix.array[1];
+        const c2 = matrix.array[3];
+        const d2 = matrix.array[4];
+        const tx2 = matrix.array[6];
+        const ty2 = matrix.array[7];
 
-        this.tx = (matrix.tx * a1) + (matrix.ty * c1) + this.tx;
-        this.ty = (matrix.tx * b1) + (matrix.ty * d1) + this.ty;
+        this.array[0] = (a2 * a1) + (b2 * c1);
+        this.array[1] = (a2 * b1) + (b2 * d1);
+
+        this.array[3] = (c2 * a1) + (d2 * c1);
+        this.array[4] = (c2 * b1) + (d2 * d1);
+
+        this.array[6] += (tx2 * a1) + (ty2 * c1);
+        this.array[7] += (tx2 * b1) + (ty2 * d1);
 
         return this;
     }
@@ -306,13 +263,14 @@ export default class Matrix
         const c = -sr * scaleY;
         const d = cr * scaleY;
 
-        this.a = (cy * a) + (sy * c);
-        this.b = (cy * b) + (sy * d);
-        this.c = (nsx * a) + (cx * c);
-        this.d = (nsx * b) + (cx * d);
+        this.array[0] = (cy * a) + (sy * c);
+        this.array[1] = (cy * b) + (sy * d);
 
-        this.tx = x + ((pivotX * a) + (pivotY * c));
-        this.ty = y + ((pivotX * b) + (pivotY * d));
+        this.array[3] = (nsx * a) + (cx * c);
+        this.array[4] = (nsx * b) + (cx * d);
+
+        this.array[6] = x + ((pivotX * a) + (pivotY * c));
+        this.array[7] = y + ((pivotX * b) + (pivotY * d));
 
         return this;
     }
@@ -325,21 +283,30 @@ export default class Matrix
      */
     prepend(matrix)
     {
-        const tx1 = this.tx;
+        const a1 = this.array[0];
+        const b1 = this.array[1];
+        const c1 = this.array[3];
+        const d1 = this.array[4];
+        const tx1 = this.array[6];
+        const ty1 = this.array[7];
 
-        if (matrix.a !== 1 || matrix.b !== 0 || matrix.c !== 0 || matrix.d !== 1)
+        const a2 = matrix.array[0];
+        const b2 = matrix.array[1];
+        const c2 = matrix.array[3];
+        const d2 = matrix.array[4];
+        const tx2 = this.array[6];
+        const ty2 = this.array[7];
+
+        if (a2 !== 1 || b2 !== 0 || c2 !== 0 || d2 !== 1)
         {
-            const a1 = this.a;
-            const c1 = this.c;
-
-            this.a = (a1 * matrix.a) + (this.b * matrix.c);
-            this.b = (a1 * matrix.b) + (this.b * matrix.d);
-            this.c = (c1 * matrix.a) + (this.d * matrix.c);
-            this.d = (c1 * matrix.b) + (this.d * matrix.d);
+            this.array[0] = (a1 * a2) + (b1 * c2);
+            this.array[1] = (a1 * b2) + (b1 * d2);
+            this.array[3] = (c1 * a2) + (d1 * c2);
+            this.array[4] = (c1 * b2) + (d1 * d2);
         }
 
-        this.tx = (tx1 * matrix.a) + (this.ty * matrix.c) + matrix.tx;
-        this.ty = (tx1 * matrix.b) + (this.ty * matrix.d) + matrix.ty;
+        this.tx = (tx1 * a2) + (ty1 * c2) + tx2;
+        this.ty = (tx1 * b2) + (ty1 * d2) + ty2;
 
         return this;
     }
@@ -347,20 +314,18 @@ export default class Matrix
     /**
      * Decomposes the matrix (x, y, scaleX, scaleY, and rotation) and sets the properties on to a transform.
      *
-     * @param {PIXI.Transform|PIXI.TransformStatic} transform - The transform to apply the properties to.
-     * @return {PIXI.Transform|PIXI.TransformStatic} The transform with the newly applied properties
+     * @param {PIXI.Transform} transform The transform to apply the properties to.
+     * @return {PIXI.Transform} The transform with the newly applied properties
      */
     decompose(transform)
     {
-        // sort out rotation / skew..
-        const a = this.a;
-        const b = this.b;
-        const c = this.c;
-        const d = this.d;
+        const a = this.array[0];
+        const b = this.array[1];
+        const c = this.array[3];
+        const d = this.array[4];
 
         const skewX = -Math.atan2(-c, d);
         const skewY = Math.atan2(b, a);
-
         const delta = Math.abs(skewX + skewY);
 
         if (delta < 0.00001)
@@ -380,11 +345,9 @@ export default class Matrix
             transform.skew.y = skewY;
         }
 
-        // next set scale
         transform.scale.x = Math.sqrt((a * a) + (b * b));
         transform.scale.y = Math.sqrt((c * c) + (d * d));
 
-        // next set position
         transform.position.x = this.tx;
         transform.position.y = this.ty;
 
@@ -398,19 +361,27 @@ export default class Matrix
      */
     invert()
     {
-        const a1 = this.a;
-        const b1 = this.b;
-        const c1 = this.c;
-        const d1 = this.d;
-        const tx1 = this.tx;
-        const n = (a1 * d1) - (b1 * c1);
+        const a = this.array[0];
+        const b = this.array[1];
+        const c = this.array[3];
+        const d = this.array[4];
+        const tx = this.array[3];
+        const ty = this.array[4];
 
-        this.a = d1 / n;
-        this.b = -b1 / n;
-        this.c = -c1 / n;
-        this.d = a1 / n;
-        this.tx = ((c1 * this.ty) - (d1 * tx1)) / n;
-        this.ty = -((a1 * this.ty) - (b1 * tx1)) / n;
+        // @ifdef DEBUG
+        debug.ASSERT((a * d) - (b * c), 'The determinant of a Matrix can not be 0 when inverting.', this);
+        // @endif
+
+        const det = 1.0 / ((a * d) - (b * c));
+
+        this.array[0] = d * det;
+        this.array[1] = -b * det;
+
+        this.array[3] = -c * det;
+        this.array[4] = a * det;
+
+        this.array[3] = ((c * ty) - (d * tx)) * det;
+        this.array[4] = ((b * tx) - (a * ty)) * det;
 
         return this;
     }
@@ -422,12 +393,12 @@ export default class Matrix
      */
     identity()
     {
-        this.a = 1;
-        this.b = 0;
-        this.c = 0;
-        this.d = 1;
-        this.tx = 0;
-        this.ty = 0;
+        this.array[0] = 1;
+        this.array[1] = 0;
+        this.array[3] = 0;
+        this.array[4] = 1;
+        this.array[6] = 0;
+        this.array[7] = 0;
 
         return this;
     }
@@ -435,59 +406,55 @@ export default class Matrix
     /**
      * Creates a new Matrix object with the same values as this one.
      *
-     * @return {PIXI.Matrix} A copy of this matrix. Good for chaining method calls.
+     * @return {PIXI.Matrix} A copy of this matrix.
      */
     clone()
     {
-        const matrix = new Matrix();
-
-        matrix.a = this.a;
-        matrix.b = this.b;
-        matrix.c = this.c;
-        matrix.d = this.d;
-        matrix.tx = this.tx;
-        matrix.ty = this.ty;
-
-        return matrix;
+        return new Matrix(
+            this.array[0],
+            this.array[1],
+            this.array[3],
+            this.array[4],
+            this.array[6],
+            this.array[7]
+        );
     }
 
     /**
      * Changes the values of the given matrix to be the same as the ones in this matrix
      *
      * @param {PIXI.Matrix} matrix - The matrix to copy from.
-     * @return {PIXI.Matrix} The matrix given in parameter with its values updated.
+     * @return {PIXI.Matrix} This matrix. Good for chaining method calls.
      */
     copy(matrix)
     {
-        matrix.a = this.a;
-        matrix.b = this.b;
-        matrix.c = this.c;
-        matrix.d = this.d;
-        matrix.tx = this.tx;
-        matrix.ty = this.ty;
+        this.array[0] = matrix.array[0];
+        this.array[1] = matrix.array[1];
+        this.array[3] = matrix.array[3];
+        this.array[4] = matrix.array[4];
+        this.array[6] = matrix.array[6];
+        this.array[7] = matrix.array[7];
 
-        return matrix;
+        return this;
     }
 
     /**
-     * A default (identity) matrix
+     * Returns a string representation of the matrix.
      *
-     * @static
-     * @const
+     * @return {string} string representation of the matrix.
      */
-    static get IDENTITY()
+    toString()
     {
-        return new Matrix();
-    }
+        const a = this.array[0];
+        const b = this.array[1];
+        const c = this.array[3];
+        const d = this.array[4];
+        const tx = this.array[3];
+        const ty = this.array[4];
 
-    /**
-     * A temp matrix
-     *
-     * @static
-     * @const
-     */
-    static get TEMP_MATRIX()
-    {
-        return new Matrix();
+        return `Matrix(${a}, ${b}, ${c}, ${d}, ${tx}, ${ty})`;
     }
 }
+
+Matrix.IDENTITY = new Matrix();
+Matrix.TEMP_MATRIX = new Matrix();

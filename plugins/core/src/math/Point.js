@@ -1,11 +1,13 @@
+import UpdateComponent from '../components/UpdateComponent';
+
 /**
  * The Point object represents a location in a two-dimensional coordinate system, where x represents
  * the horizontal axis and y represents the vertical axis.
  *
  * @class
- * @memberof PIXI
+ * @memberof math
  */
-export default class Point
+export default class Point extends UpdateComponent()
 {
     /**
      * @param {number} [x=0] - position of the point on the x axis
@@ -13,17 +15,61 @@ export default class Point
      */
     constructor(x = 0, y = 0)
     {
-        /**
-         * @member {number}
-         * @default 0
-         */
-        this.x = x;
+        super();
 
         /**
+         * The private tracker for the x value.
+         *
+         * @private
          * @member {number}
-         * @default 0
          */
-        this.y = y;
+        this._x = x;
+
+        /**
+         * The private tracker for the y value.
+         *
+         * @private
+         * @member {number}
+         */
+        this._y = y;
+    }
+
+    /**
+     * The position of the displayObject on the x axis relative to the local coordinates of the parent.
+     *
+     * @member {number}
+     */
+    get x()
+    {
+        return this._x;
+    }
+
+    set x(value) // eslint-disable-line require-jsdoc
+    {
+        if (this._x !== value)
+        {
+            this._x = value;
+            this.update();
+        }
+    }
+
+    /**
+     * The position of the displayObject on the x axis relative to the local coordinates of the parent.
+     *
+     * @member {number}
+     */
+    get y()
+    {
+        return this._y;
+    }
+
+    set y(value) // eslint-disable-line require-jsdoc
+    {
+        if (this._y !== value)
+        {
+            this._y = value;
+            this.update();
+        }
     }
 
     /**
@@ -33,7 +79,7 @@ export default class Point
      */
     clone()
     {
-        return new Point(this.x, this.y);
+        return new Point(this._x, this._y);
     }
 
     /**
@@ -43,7 +89,7 @@ export default class Point
      */
     copy(p)
     {
-        this.set(p.x, p.y);
+        this.set(p._x, p._y);
     }
 
     /**
@@ -54,7 +100,7 @@ export default class Point
      */
     equals(p)
     {
-        return (p.x === this.x) && (p.y === this.y);
+        return (p._x === this._x) && (p._y === this._y);
     }
 
     /**
@@ -66,8 +112,14 @@ export default class Point
      */
     set(x, y)
     {
-        this.x = x || 0;
-        this.y = y || ((y !== 0) ? this.x : 0);
-    }
+        const _x = x || 0;
+        const _y = y || ((y !== 0) ? _x : 0);
 
+        if (this._x !== _x || this._y !== _y)
+        {
+            this._x = _x;
+            this._y = _y;
+            this.update();
+        }
+    }
 }

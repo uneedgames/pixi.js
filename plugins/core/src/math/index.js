@@ -1,7 +1,6 @@
 /** @namespace math */
 
 export { default as Point } from './Point';
-export { default as ObservablePoint } from './ObservablePoint';
 export { default as Matrix } from './Matrix';
 
 export { default as Circle } from './shapes/Circle';

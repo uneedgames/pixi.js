@@ -1,5 +1,7 @@
 # Things to update:
 
+- Look at:
+    * `math/shapes/`
 - Remove the need to check SVGs like the current docs say (Texture)
 - Change Texture docs to be correct after modifications
 - Want to change this pattern of adding properties for storage on public objects, and instead create wrappers where they are needed internally.
@@ -11,6 +13,7 @@
 - Replace `TextureSource.dirtyId` with `TextureSource.updateId`.
 - Change all `{*}` types to be specific types, especially if we can create jsdoc interfaces for them
 - Implement `legacy` in the renderer in a way that is not global (right now it sets a static)
+
 
 # Migration guide
 

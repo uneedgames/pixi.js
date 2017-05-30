@@ -81,20 +81,21 @@ export default class ImageResource extends TextureResource
      *
      * @static
      * @param {string} url The url to load from.
-     * @param {string} crossorigin The crossorigin value to use for the image.
+     * @param {object} options Options to pass to the ctor
+     * @param {string|boolean} crossorigin The crossorigin value to use for the image.
      * @returns {ImageResource} The newly created resource.
      */
-    static fromUrl(url, crossorigin)
+    static fromUrl(url, options)
     {
         const image = new Image();
 
-        if (crossorigin == null && url.indexOf('data:') !== 0)
+        if (options.crossorigin == null && url.indexOf('data:') !== 0)
         {
             image.crossOrigin = determineCrossOrigin(url);
         }
-        else if (crossorigin)
+        else if (options.crossorigin)
         {
-            image.crossOrigin = typeof crossorigin === 'string' ? crossorigin : 'anonymous';
+            image.crossOrigin = typeof options.crossorigin === 'string' ? options.crossorigin : 'anonymous';
         }
 
         image.src = url;

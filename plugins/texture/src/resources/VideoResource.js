@@ -1,4 +1,5 @@
 import TextureResource from './TextureResource';
+import determineCrossOrigin from '../../utils/determineCrossOrigin';
 
 /**
  * @class
@@ -213,11 +214,17 @@ export default class VideoResource extends TextureResource
      * @param {string} [videoSrc.mime] The mimetype of the video (e.g. 'video/mp4'). If not specified
      *  the url's extension will be used as the second part of the mime type.
      * @param {object} options Options to pass to the ctor
+     * @param {string|boolean} crossorigin The crossorigin value to use for the image.
      * @return {PIXI.VideoBaseTexture} Newly created VideoBaseTexture
      */
     static fromUrl(videoSrc, options)
     {
         const video = document.createElement('video');
+
+        if (options.crossorigin)
+        {
+            video.crossOrigin = typeof options.crossorigin === 'string' ? options.crossorigin : 'anonymous';
+        }
 
         video.setAttribute('webkit-playsinline', '');
         video.setAttribute('playsinline', '');
@@ -227,18 +234,36 @@ export default class VideoResource extends TextureResource
         {
             for (let i = 0; i < videoSrc.length; ++i)
             {
-                video.appendChild(createSource(videoSrc[i].src || videoSrc[i], videoSrc[i].mime));
+                const url = videoSrc[i].src || videoSrc[i];
+
+                checkCrossOrigin(video, url);
+                video.appendChild(createSource(url, videoSrc[i].mime));
             }
         }
         // single object or string
         else
         {
-            video.appendChild(createSource(videoSrc.src || videoSrc, videoSrc.mime));
+            const url = videoSrc.src || videoSrc;
+
+            checkCrossOrigin(video, url);
+            video.appendChild(createSource(url, videoSrc.mime));
         }
 
         video.load();
 
         return new VideoResource(video, options);
+    }
+}
+
+function checkCrossOrigin(video, url)
+{
+    // already set, just stop.
+    if (video.crossOrigin) return;
+
+    // set it for non-data urls that we determine to be cross origin
+    if (url.indexOf('data:') !== 0)
+    {
+        video.crossOrigin = determineCrossOrigin(url);
     }
 }
 

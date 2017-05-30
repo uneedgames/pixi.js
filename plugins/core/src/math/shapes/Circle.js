@@ -5,7 +5,7 @@ import { SHAPES } from '../../const';
  * The Circle object can be used to specify a hit area for displayObjects
  *
  * @class
- * @memberof PIXI
+ * @memberof math
  */
 export default class Circle
 {

@@ -1,3 +1,5 @@
+const PI2 = Math.PI * 2;
+
 /**
  * A standard object to store the Uvs of a texture
  *
@@ -12,47 +14,52 @@ export default class TextureUVs
      */
     constructor()
     {
-        this.x0 = 0;
-        this.y0 = 0;
+        this.array = new Uint16Array([0, 0, 1, 0, 1, 1, 0, 1]);
+    }
 
-        this.x1 = 1;
-        this.y1 = 0;
-
-        this.x2 = 1;
-        this.y2 = 1;
-
-        this.x3 = 0;
-        this.y3 = 1;
-
-        this.uvsUint32 = new Uint32Array(4);
+    /**
+     * Transforms an array of UV points to be relative to this texture's UV range.
+     *
+     * For example, if this texture is the rect (0.5, 0.5) -> (1.0, 1.0) and you want to
+     * transform the point (0.5, 0.5). The result is (0.75, 0.75).
+     *
+     * @param {Uint16Array} array The array of UVs to transform.
+     */
+    transformUVArray(array)
+    {
+        // TODO (cengler): Implement this, should allow us to support all features within a spritesheet!
+        // Doing just axis-aligned texture UVs is easy, but need to ensure this supports non-quad UV arrays
+        // and textureUV rotation...
     }
 
     /**
      * Sets the texture Uvs based on the given frame information.
      *
      * @private
-     * @param {PIXI.Rectangle} frame - The frame of the texture
-     * @param {PIXI.Rectangle} baseFrame - The base frame of the texture
-     * @param {number} rotation - Rotation of frame, in radians.
+     * @param {PIXI.Rectangle} frame The frame of the texture
+     * @param {PIXI.Rectangle} baseFrame The base frame of the texture
+     * @param {number} rotation Rotation of frame, in radians.
      */
     set(frame, baseFrame, rotation)
     {
         const tw = baseFrame.width;
         const th = baseFrame.height;
 
-        this.x0 = frame.x / tw;
-        this.y0 = frame.y / th;
+        // calculate the normalized quad points
+        this.array[0] = frame.x / tw;
+        this.array[1] = frame.y / th;
 
-        this.x1 = (frame.x + frame.width) / tw;
-        this.y1 = frame.y / th;
+        this.array[2] = (frame.x + frame.width) / tw;
+        this.array[3] = frame.y / th;
 
-        this.x2 = (frame.x + frame.width) / tw;
-        this.y2 = (frame.y + frame.height) / th;
+        this.array[4] = (frame.x + frame.width) / tw;
+        this.array[5] = (frame.y + frame.height) / th;
 
-        this.x3 = frame.x / tw;
-        this.y3 = (frame.y + frame.height) / th;
+        this.array[6] = frame.x / tw;
+        this.array[7] = (frame.y + frame.height) / th;
 
-        if (rotation)
+        // if we have rotation, then rotate our quad
+        if (rotation % PI2 !== 0)
         {
             // coordinates of center
             const cx = (frame.x / tw) + (frame.width / 2 / tw);
@@ -62,22 +69,17 @@ export default class TextureUVs
             const sr = Math.sin(rotation);
             const cr = Math.cos(rotation);
 
-            this.x0 = cx + (((this.x0 - cx) * cr) - ((this.y0 - cy) * sr));
-            this.y0 = cy + (((this.x0 - cx) * sr) + ((this.y0 - cy) * cr));
+            // compiler should unroll this
+            for (let i = 0; i < 8; i += 2)
+            {
+                const x = this.array[i];
+                const y = this.array[i + 1];
 
-            this.x1 = cx + (((this.x1 - cx) * cr) - ((this.y1 - cy) * sr));
-            this.y1 = cy + (((this.x1 - cx) * sr) + ((this.y1 - cy) * cr));
-
-            this.x2 = cx + (((this.x2 - cx) * cr) - ((this.y2 - cy) * sr));
-            this.y2 = cy + (((this.x2 - cx) * sr) + ((this.y2 - cy) * cr));
-
-            this.x3 = cx + (((this.x3 - cx) * cr) - ((this.y3 - cy) * sr));
-            this.y3 = cy + (((this.x3 - cx) * sr) + ((this.y3 - cy) * cr));
+                /* eslint-disable no-multi-spaces */
+                this.array[i]       = cx + (((x - cx) * cr) - ((y - cy) * sr));
+                this.array[i + 1]   = cy + (((x - cx) * sr) + ((y - cy) * cr));
+                /* eslint-enable no-multi-spaces */
+            }
         }
-
-        this.uvsUint32[0] = (((this.y0 * 0xFFFF) & 0xFFFF) << 16) | ((this.x0 * 0xFFFF) & 0xFFFF);
-        this.uvsUint32[1] = (((this.y1 * 0xFFFF) & 0xFFFF) << 16) | ((this.x1 * 0xFFFF) & 0xFFFF);
-        this.uvsUint32[2] = (((this.y2 * 0xFFFF) & 0xFFFF) << 16) | ((this.x2 * 0xFFFF) & 0xFFFF);
-        this.uvsUint32[3] = (((this.y3 * 0xFFFF) & 0xFFFF) << 16) | ((this.x3 * 0xFFFF) & 0xFFFF);
     }
 }

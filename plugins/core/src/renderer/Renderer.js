@@ -94,14 +94,6 @@ export default class Renderer extends DestroyComponent(UidComponent(ECS))
          */
         this._tempDisplayObjectParent = new Container();
 
-        /**
-         * The last root object that the renderer tried to render.
-         *
-         * @private
-         * @member {PIXI.DisplayObject}
-         */
-        this._lastObjectRendered = this._tempDisplayObjectParent;
-
         // signals, TODO: Docs
         this.onContextChange = new Signal();
         this.onReset = new Signal();
@@ -123,6 +115,8 @@ export default class Renderer extends DestroyComponent(UidComponent(ECS))
             .addSystem(FilterSystem, 'filter')
             .addSystem(RenderTextureSystem, 'renderTexture')
             .addSystem(BatchSystem,'batch')
+
+        this._onContextChangeBinding = this.onContextChange.add(this._initContext, this);
 
         // create and add the default managers
         for (const k in defaultManagers)
@@ -215,109 +209,60 @@ export default class Renderer extends DestroyComponent(UidComponent(ECS))
         }
     }
 
-    addSystem(_class, name)
+    /**
+     * Add a system to the renderer.
+     *
+     * @param {System} system - The system to add.
+     * @param {boolean} skipSort - If true, will not sort the systems automatically.
+     *  Setting this to true requires you call {@link Renderer#sortSystems} manually. This
+     *  can be useful if you are adding a large batch of systems in a single frame and want
+     *  to delay the sorting until after they are all added.
+     */
+    addSystem(system, skipSort = false)
     {
-        if(!name)
-        {
-            name = _class.name;
-        }
+        super.addSystem(system);
 
-        //TODO - read name from class.name..
-
-        /*
-        if(name.includes('System'))
-        {
-            name = name.replace('System', '');
-            name = name.charAt(0).toLowerCase() + name.slice(1);
-        }
-        */
-
-        const system = new _class(this);
-
-        if(this[name])
-        {
-            throw new Error('Whoops! ' + name + ' is already a manger');
-            return;
-        }
-
-        this[name] = system;
-
-        for(var i in this.runners)
-        {
-            this.runners[i].add(system);
-        }
-
-        return this;
-
-        /**
-         * Fired after rendering finishes.
-         *
-         * @event PIXI.WebGLRenderer#postrender
-         */
-
-        /**
-         * Fired before rendering starts.
-         *
-         * @event PIXI.WebGLRenderer#prerender
-         */
-
-        /**
-         * Fired when the WebGL context is set.
-         *
-         * @event PIXI.WebGLRenderer#context
-         * @param {WebGLRenderingContext} gl - WebGL context.
-         */
+        if (!skipSort) this.sortSystems();
     }
 
     /**
-     * Creates the WebGL context
+     * Sorts the systems by priority. If you change a system's priority after adding
+     * it to the renderer then you will need to call this for it to be properly sorted.
      *
-     * @private
      */
-    _initContext()
+    sortSystems()
     {
-        const gl = this.gl;
-
-        const maxTextures = gl.getParameter(gl.MAX_TEXTURE_IMAGE_UNITS);
-
-        this.boundTextures = new Array(maxTextures);
-        this.emptyTextures = new Array(maxTextures);
-
-        const tempObj = { _glTextures: {} };
-
-        for (let i = 0; i < maxTextures; i++)
-        {
-            this.boundTextures[i] = tempObj;
-        }
+        this.systems.sort(compareSystemsPriority);
     }
 
     /**
-     * Renders the object to its webGL view
+     * Sorts the entities by render priority and their group hint. If you change an
+     * entity's priority after adding it to the renderer then you will need to call
+     * this for it to take effect.
      *
-     * @param {PIXI.DisplayObject} displayObject - the object to be rendered
-     * @param {PIXI.RenderTexture} renderTexture - The render texture to render to.
-     * @param {boolean} [clear] - Should the canvas be cleared before the new render
-     * @param {PIXI.Transform} [transform] - A transform to apply to the render texture before rendering.
-     * @param {boolean} [skipUpdateTransform] - Should we skip the update transform pass?
      */
-    render(displayObject, renderTexture, clear, transform, skipUpdateTransform)
+    sortEntities()
     {
-        // can be handy to know!
-        this.renderingToScreen = !renderTexture;
+        this.entities.sort(compareRenderPriority);
+    }
 
-        this.runners.prerender.run();
-        this.emit('prerender');
-
+    /**
+     * Renders the entities to the render target.
+     *
+     * @param {RenderTarget} target - The target to render to, defaults to the screen.
+     * @param {boolean} clear - Should we clear the screen before rendering?
+     * @param {Matrix2d} transform - An optional matrix transform to apply for this render.
+     */
+    render(target = this.screen, clear = this.clearBeforeRender, transform = null)
+    {
         // no point rendering if our context has been blown up!
-        if(this.context.isLost)
+        if (this.context.isLost)
         {
             return;
         }
 
-        if (!renderTexture)
-        {
-            this._lastObjectRendered = displayObject;
-        }
+        this.renderingToScreen = !renderTexture;
+        this.onPreRender.dispatch();
 
         if (!skipUpdateTransform)
         {
@@ -327,7 +272,6 @@ export default class Renderer extends DestroyComponent(UidComponent(ECS))
             displayObject.parent = this._tempDisplayObjectParent;
             displayObject.updateTransform();
             displayObject.parent = cacheParent;
-           // displayObject.hitArea = //TODO add a temp hit area
         }
 
         this.renderTexture.bind(renderTexture);
@@ -340,11 +284,10 @@ export default class Renderer extends DestroyComponent(UidComponent(ECS))
 
         displayObject.renderWebGL(this);
 
-        // apply transform..
         this.batch.currentRenderer.flush();
 
-        this.runners.postrender.run();
-        this.emit('postrender');
+        // tell everyone we updated
+        this.onPostRender.dispatch();
     }
 
     /**
@@ -404,17 +347,36 @@ export default class Renderer extends DestroyComponent(UidComponent(ECS))
         // call base destroy
         super.destroy();
 
-        this.view.destroy(removeView);
+        this._onContextChangeBinding.detach();
+        this._onContextChangeBinding = null;
 
-        this.runners.destroy.run();
-
-        // TODO nullify all the managers..
+        // TODO nullify all the
         this.gl = null;
         this.options = null;
         this.blendModes = null;
 
         this._tempDisplayObjectParent = null;
-        this._lastObjectRendered = null;
+    }
+
+    /**
+     * Creates the WebGL context
+     *
+     * @private
+     */
+    _initContext()
+    {
+        const gl = this.gl;
+        const maxTextures = gl.getParameter(gl.MAX_TEXTURE_IMAGE_UNITS);
+
+        this.boundTextures = new Array(maxTextures);
+        this.emptyTextures = new Array(maxTextures);
+
+        const tempObj = { _glTextures: {} };
+
+        for (let i = 0; i < maxTextures; i++)
+        {
+            this.boundTextures[i] = tempObj;
+        }
     }
 }
 
@@ -430,8 +392,9 @@ export default class Renderer extends DestroyComponent(UidComponent(ECS))
  * @property {boolean} [autoResize] If the render view is automatically resized, default false
  * @property {boolean} [antialias] sets antialias. If not available natively then FXAA
  *  antialiasing is used
- * @property {boolean} [forceFXAA] forces FXAA antialiasing to be used over native.
+ * @property {boolean} [forceFXAA] Forces FXAA antialiasing to be used over native.
  *  FXAA is faster, but may not always look as great
+ * @property {boolean} [stencil] Should the context have the stencil buffer active?
  * @property {number} [resolution] The resolution / device pixel ratio of the renderer.
  *  The resolution of the renderer retina would be 2.
  * @property {boolean} [clearBeforeRender] Disable this by setting this to false. For example if
@@ -463,6 +426,7 @@ Renderer.defaultOptions = {
     autoResize: false,
     antialias: false,
     forceFXAA: false,
+    stencil: false,
     resolution: 1.0,
     clearBeforeRender: true,
     preserveDrawingBuffer: false,
@@ -471,3 +435,32 @@ Renderer.defaultOptions = {
     legacy: false,
     sayHello: true,
 };
+
+/**
+ * Lower is placed first
+ *
+ * @param {System} a The first system
+ * @param {System} b The second system
+ * @return {number} The sort number
+ */
+function compareSystemsPriority(a, b)
+{
+    return a.priority - b.priority;
+}
+
+/**
+ * Lower is placed first, and within renderPriority they are grouped by the renderGroupHint
+ *
+ * @param {Entity} a The first entity
+ * @param {Entity} b The second entity
+ * @return {number} The sort number
+ */
+function compareRenderPriority(a, b)
+{
+    if (a.renderPriority === b.renderPriority)
+    {
+        return a.renderGroupHint === b.renderGroupHint ? 0 : 1;
+    }
+
+    return a.renderPriority - b.renderPriority;
+}

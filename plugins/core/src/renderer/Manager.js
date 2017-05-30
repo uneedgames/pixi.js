@@ -47,6 +47,8 @@ export default class Manager extends DestroyComponent()
     {
         super.destroy();
 
+        this.renderer = null;
+
         this._onContextChangeBinding.detach();
         this._onContextChangeBinding = null;
     }

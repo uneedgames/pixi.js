@@ -24,6 +24,17 @@ export default class MaskSystem extends WebGLSystem
 
         this.alphaMaskPool = [];
         this.alphaMaskIndex = 0;
+
+        // Add to on context change listener
+        const attributes = gl.getContextAttributes();
+
+        // this is going to be fairly simple for now.. but at least we have room to grow!
+        if (!attributes.stencil)
+        {
+            /* eslint-disable no-console */
+            console.warn('Provided WebGL context does not have a stencil buffer, masks may not render correctly');
+            /* eslint-enable no-console */
+        }
     }
 
     /**
@@ -197,3 +208,6 @@ export default class MaskSystem extends WebGLSystem
         gl.disable(gl.SCISSOR_TEST);
     }
 }
+
+// activate stencil buffer by default, it is required for masking.
+Renderer.defaultOptions.stencil = true;

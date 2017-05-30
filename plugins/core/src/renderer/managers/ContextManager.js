@@ -45,7 +45,7 @@ export default class ContextManager extends Manager
             // @endif
 
             this._initFromOptions({
-                stencil: true,
+                stencil: options.stencil,
                 alpha: options.transparent,
                 antialias: options.antialias,
                 premultipliedAlpha: options.transparent && options.transparent !== 'notMultiplied',
@@ -116,25 +116,6 @@ export default class ContextManager extends Manager
     }
 
     /**
-     * Used to validate that a context is useful for pixi.
-     *
-     * @private
-     * @param {WebGLRenderingContext} gl The context to validate.
-     */
-    _validateContext(gl)
-    {
-        const attributes = gl.getContextAttributes();
-
-        // this is going to be fairly simple for now.. but at least we have room to grow!
-        if (!attributes.stencil)
-        {
-            /* eslint-disable no-console */
-            console.warn('Provided WebGL context does not have a stencil buffer, masks may not render correctly');
-            /* eslint-enable no-console */
-        }
-    }
-
-    /**
      * Called by the ContextAwareComponent when the underlying context changes.
      *
      * @protected
@@ -160,7 +141,6 @@ export default class ContextManager extends Manager
     _initFromContext(gl)
     {
         this.gl = gl;
-        this._validateContext(gl);
         this.renderer.onContextChange.dispatch(gl);
     }
 
