@@ -328,17 +328,17 @@ export default class TextureSource extends
      * @param {number} type The {@link data.TYPES} to use for the texture, by default this is auto-detected.
      * @return {TextureSource} The new base texture.
      */
-    static fromArrayBufferView(array, width = array.length, height = 1, format = data.FORMATS.RGBA, type = 0)
+    static fromArrayBufferView(array, width = array.length, height = 1, format = data.PIXEL_FORMATS.RGBA, type = 0)
     {
         if (type === 0)
         {
-            if (array instanceof Int8Array) type = data.TYPES.BYTE;
-            else if (array instanceof Uint8Array) type = data.TYPES.UNSIGNED_BYTE;
-            else if (array instanceof Int16Array) type = data.TYPES.SHORT;
-            else if (array instanceof Uint16Array) type = data.TYPES.UNSIGNED_SHORT;
-            else if (array instanceof Int32Array) type = data.TYPES.INT;
-            else if (array instanceof Uint32Array) type = data.TYPES.UNSIGNED_INT;
-            else if (array instanceof Float32Array) type = data.TYPES.FLOAT;
+            if (array instanceof Int8Array) type = data.PIXEL_TYPES.BYTE;
+            else if (array instanceof Uint8Array) type = data.PIXEL_TYPES.UNSIGNED_BYTE;
+            else if (array instanceof Int16Array) type = data.PIXEL_TYPES.SHORT;
+            else if (array instanceof Uint16Array) type = data.PIXEL_TYPES.UNSIGNED_SHORT;
+            else if (array instanceof Int32Array) type = data.PIXEL_TYPES.INT;
+            else if (array instanceof Uint32Array) type = data.PIXEL_TYPES.UNSIGNED_INT;
+            else if (array instanceof Float32Array) type = data.PIXEL_TYPES.FLOAT;
         }
 
         // @ifdef DEBUG
@@ -359,7 +359,7 @@ export default class TextureSource extends
                 wrapMode: data.WRAP_MODES.CLAMP,
                 format,
                 type,
-                target: data.TARGETS.TEXTURE_2D,
+                target: data.TEXTURE_TARGETS.TEXTURE_2D,
                 mipmap: false,
                 premultiplyAlpha: false,
             }
@@ -385,9 +385,9 @@ export default class TextureSource extends
 TextureSource.defaults = {
     scaleMode: data.SCALE_MODES.LINEAR,
     wrapMode: data.WRAP_MODES.CLAMP_TO_EDGE,
-    format: data.FORMATS.RGBA,
-    type: data.TYPES.UNSIGNED_BYTE,
-    target: data.TARGETS.TEXTURE_2D,
+    format: data.PIXEL_FORMATS.RGBA,
+    type: data.PIXEL_TYPES.UNSIGNED_BYTE,
+    target: data.TEXTURE_TARGETS.TEXTURE_2D,
     mipMap: true,
     premultiplyAlpha: true,
 };
@@ -416,20 +416,20 @@ function validateTextureSourceParams(resource, { scaleMode, wrapMode, format, ty
         // validate the length of the array view matches the format expectation
         switch (format)
         {
-            case data.FORMATS.RGBA:
+            case data.PIXEL_FORMATS.RGBA:
                 debug.ASSERT(resource.data.length % 4 === 0, 'The RGBA format requires 4 components per pixel.');
                 break;
 
-            case data.FORMATS.RGB:
+            case data.PIXEL_FORMATS.RGB:
                 debug.ASSERT(resource.data.length % 3 === 0, 'The RGB format requires 3 components per pixel.');
                 break;
 
-            case data.FORMATS.LUMINANCE_ALPHA:
+            case data.PIXEL_FORMATS.LUMINANCE_ALPHA:
                 debug.ASSERT(resource.data.length % 2 === 0, 'The LUMINANCE_ALPHA format requires 2 components per pixel.');
                 break;
 
-            case data.FORMATS.DEPTH_COMPONENT:
-            case data.FORMATS.DEPTH_STENCIL:
+            case data.PIXEL_FORMATS.DEPTH_COMPONENT:
+            case data.PIXEL_FORMATS.DEPTH_STENCIL:
                 debug.ASSERT(w2 || depthTex, 'The DEPTH_COMPONENT and DEPTH_STENCIL formats require either WebGL2 or the WEBGL_depth_texture extension.');
                 break;
 
@@ -440,63 +440,63 @@ function validateTextureSourceParams(resource, { scaleMode, wrapMode, format, ty
         switch (type)
         {
             // WebGL 1
-            case data.TYPES.UNSIGNED_BYTE:
+            case data.PIXEL_TYPES.UNSIGNED_BYTE:
                 debug.ASSERT(resource.data instanceof Uint8Array, 'The UNSIGNED_BYTE type requires using an Uint8Array.');
                 break;
-            case data.TYPES.UNSIGNED_SHORT_5_6_5:
+            case data.PIXEL_TYPES.UNSIGNED_SHORT_5_6_5:
                 debug.ASSERT(resource.data instanceof Uint16Array, 'The UNSIGNED_SHORT_5_6_5 type requires using an Uint16Array.');
                 break;
-            case data.TYPES.UNSIGNED_SHORT_4_4_4_4:
+            case data.PIXEL_TYPES.UNSIGNED_SHORT_4_4_4_4:
                 debug.ASSERT(resource.data instanceof Uint16Array, 'The UNSIGNED_SHORT_4_4_4_4 type requires using an Uint16Array.');
                 break;
-            case data.TYPES.UNSIGNED_SHORT_5_5_5_1:
+            case data.PIXEL_TYPES.UNSIGNED_SHORT_5_5_5_1:
                 debug.ASSERT(resource.data instanceof Uint16Array, 'The UNSIGNED_SHORT_4_4_4_4 type requires using an Uint16Array.');
                 break;
 
             // WEBGL_depth_texture (and WebGL 2)
-            case data.TYPES.UNSIGNED_SHORT:
+            case data.PIXEL_TYPES.UNSIGNED_SHORT:
                 debug.ASSERT((w2 || depthTex) && resource.data instanceof Uint16Array, 'The UNSIGNED_SHORT type requires using an Uint16Array, and WebGL2 or WEBGL_depth_texture.');
                 break;
-            case data.TYPES.UNSIGNED_INT:
+            case data.PIXEL_TYPES.UNSIGNED_INT:
                 debug.ASSERT((w2 || depthTex) && resource.data instanceof Uint32Array, 'The UNSIGNED_INT_5_9_9_9_REV type requires using an Uint32Array, and WebGL2 or WEBGL_depth_texture.');
                 break;
-            case data.TYPES.UNSIGNED_INT_24_8:
+            case data.PIXEL_TYPES.UNSIGNED_INT_24_8:
                 debug.ASSERT((w2 || depthTex) && resource.data instanceof Uint32Array, 'The UNSIGNED_INT_5_9_9_9_REV type requires using an Uint32Array, and WebGL2 or WEBGL_depth_texture.');
                 break;
 
             // OES_texture_float (and WebGL 2)
-            case data.TYPES.FLOAT:
+            case data.PIXEL_TYPES.FLOAT:
                 debug.ASSERT((w2 || texFloat) && resource.data instanceof Float32Array, 'The FLOAT type requires using an Float32Array, and WebGL2 or OES_texture_float.');
                 break;
 
             // OES_texture_half_float
-            case data.TYPES.HALF_FLOAT_OES:
+            case data.PIXEL_TYPES.HALF_FLOAT_OES:
                 debug.ASSERT(texHalfFloat && (resource.data instanceof Uint16Array || resource.data instanceof Int16Array), 'The HALF_FLOAT_OES type requires using an Uint16Array or Int16Array, and OES_texture_half_float.');
                 break;
 
             // WebGL 2
-            case data.TYPES.BYTE:
+            case data.PIXEL_TYPES.BYTE:
                 debug.ASSERT(w2 && resource.data instanceof Int8Array, 'The BYTE type requires using an Int8Array, and WebGL2.');
                 break;
-            case data.TYPES.SHORT:
+            case data.PIXEL_TYPES.SHORT:
                 debug.ASSERT(w2 && resource.data instanceof Int16Array, 'The SHORT type requires using an Int16Array, and WebGL2.');
                 break;
-            case data.TYPES.INT:
+            case data.PIXEL_TYPES.INT:
                 debug.ASSERT(w2 && resource.data instanceof Int32Array, 'The INT type requires using an Int32Array, and WebGL2.');
                 break;
-            case data.TYPES.HALF_FLOAT:
+            case data.PIXEL_TYPES.HALF_FLOAT:
                 debug.ASSERT(w2 && (resource.data instanceof Uint16Array || resource.data instanceof Int16Array), 'The HALF_FLOAT type requires using a Uint16Array or Int16Array, and WebGL2.');
                 break;
-            case data.TYPES.UNSIGNED_INT_2_10_10_10_REV:
+            case data.PIXEL_TYPES.UNSIGNED_INT_2_10_10_10_REV:
                 debug.ASSERT(w2 && resource.data instanceof Uint32Array, 'The UNSIGNED_INT_2_10_10_10_REV type requires using an Uint32Array, and WebGL2.');
                 break;
-            case data.TYPES.UNSIGNED_INT_10F_11F_11F_REV:
+            case data.PIXEL_TYPES.UNSIGNED_INT_10F_11F_11F_REV:
                 debug.ASSERT(w2 && resource.data instanceof Uint32Array, 'The UNSIGNED_INT_10F_11F_11F_REV type requires using an Uint32Array, and WebGL2.');
                 break;
-            case data.TYPES.UNSIGNED_INT_5_9_9_9_REV:
+            case data.PIXEL_TYPES.UNSIGNED_INT_5_9_9_9_REV:
                 debug.ASSERT(w2 && resource.data instanceof Uint32Array, 'The UNSIGNED_INT_5_9_9_9_REV type requires using an Uint32Array, and WebGL2.');
                 break;
-            case data.TYPES.FLOAT_32_UNSIGNED_INT_24_8_REV:
+            case data.PIXEL_TYPES.FLOAT_32_UNSIGNED_INT_24_8_REV:
                 debug.ASSERT(w2 && resource.data instanceof Float32Array, 'The FLOAT_32_UNSIGNED_INT_24_8_REV type requires using an Float32Array, and WebGL2.');
                 break;
         }

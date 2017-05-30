@@ -1,11 +1,10 @@
-import { VERSION } from '../data';
-
 /**
  * General utility functions used in the pixi library.
  *
  * @namespace utils
  */
 
+const VERSION = '/* @echo VERSION */';
 const DATA_URI = /^\s*data:(?:([\w-]+)\/([\w+.-]+))?(?:;(charset=[\w-]+|base64))?,(.*)/i;
 let nextUid = 0;
 

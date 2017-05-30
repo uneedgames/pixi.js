@@ -40,7 +40,7 @@ export default class FrameBuffer
 
     addDepthTexture(texture)
     {
-        this.depthTexture = texture || new Texture(null, 0, 1, this.width, this.height, FORMATS.DEPTH_COMPONENT, TYPES.UNSIGNED_SHORT);//UNSIGNED_SHORT;
+        this.depthTexture = texture || new Texture(null, 0, 1, this.width, this.height, PIXEL_FORMATS.DEPTH_COMPONENT, PIXEL_TYPES.UNSIGNED_SHORT);//UNSIGNED_SHORT;
 
         this.dirtyId++;
         this.dirtyFormat++;

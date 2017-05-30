@@ -8,7 +8,7 @@ export default class ArrayTexture extends Texture
     {
         super(null, 0, 1, width, height, format);
 
-        this.target = TARGETS.TEXTURE_2D_ARRAY;
+        this.target = TEXTURE_TARGETS.TEXTURE_2D_ARRAY;
         this.size = size;
         this._new = true;
         this.array = [];

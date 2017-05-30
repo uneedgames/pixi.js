@@ -4,10 +4,6 @@
         "browser": true,
         "node": true
     },
-    "globals": {
-        "global": false,
-        "__VERSION__": false
-    },
     "parserOptions": {
         "ecmaVersion": 6,
         "ecmaFeatures": {

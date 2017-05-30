@@ -18,7 +18,7 @@ export default class Attribute
      * @param {number} [stride] How far apart (in floats) the start of each value is. (used for interleaving data)
      * @param {number} [start] How far into the array to start reading values (used for interleaving data)
      */
-    constructor(buffer, size, normalized = false, type = TYPES.FLOAT, stride, start, instance)
+    constructor(buffer, size, normalized = false, type = PIXEL_TYPES.FLOAT, stride, start, instance)
     {
         this.buffer = buffer;
         this.size = size;
