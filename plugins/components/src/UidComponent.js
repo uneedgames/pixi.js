@@ -1,4 +1,9 @@
-import { uid } from '../utils';
+let nextUid = 0;
+
+function _uid()
+{
+    return ++nextUid;
+}
 
 export default function UniqueIdentifierComponent(Base = Object)
 {
@@ -22,7 +27,26 @@ export default function UniqueIdentifierComponent(Base = Object)
              * @readonly
              * @member {number}
              */
-            this.uid = uid();
+            this.uid = _uid();
+        }
+
+        /**
+         * Generates a new unique identifier.
+         *
+         * @return {number} The next unique identifier to use.
+         */
+        static uid()
+        {
+            return _uid();
         }
     };
 }
+
+/**
+ * Gets the next unique identifier
+ *
+ * @static
+ * @memberof UniqueIdentifierComponent
+ * @return {number} The next unique identifier to use.
+ */
+UniqueIdentifierComponent.uid = _uid;

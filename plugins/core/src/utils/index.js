@@ -6,18 +6,6 @@
 
 const VERSION = '/* @echo VERSION */';
 const DATA_URI = /^\s*data:(?:([\w-]+)\/([\w+.-]+))?(?:;(charset=[\w-]+|base64))?,(.*)/i;
-let nextUid = 0;
-
-/**
- * Gets the next unique identifier
- *
- * @memberof utils
- * @return {number} The next unique identifier to use.
- */
-export function uid()
-{
-    return ++nextUid;
-}
 
 /**
  * Typedef for decomposeDataUri return object.

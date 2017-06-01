@@ -10,9 +10,9 @@ import { ASSERT } from '@pixi/debug';
  */
 
 /**
- * Map of WebGL types to their respective sizes.
+ * Map of WebGL types to their respective byte sizes.
  *
- * @memberof glutil.GLData
+ * @memberof gl.GLData
  */
 export const GL_SIZE_MAP = {
     [GLConstants.FLOAT]:        1,
@@ -41,7 +41,7 @@ export const GL_SIZE_MAP = {
  * Map of WebGL types to setter functions to upload the values of that type.
  * This map is for single values of the types.
  *
- * @memberof glutil.GLData
+ * @memberof gl.GLData
  */
 export const GL_SETTER = {
     [GLConstants.FLOAT]:        (gl, loc, value) => gl.uniform1f(loc, value),
@@ -70,7 +70,7 @@ export const GL_SETTER = {
  * Map of WebGL types to setter functions to upload the values of that type.
  * This map is for arrays of the types.
  *
- * @memberof glutil.GLData
+ * @memberof gl.GLData
  */
 export const GL_ARRAY_SETTER = {
     [GLConstants.FLOAT]:        (gl, loc, value) => gl.uniform1fv(loc, value),
@@ -98,7 +98,7 @@ export const GL_ARRAY_SETTER = {
 /**
  * Maps a uniform data type and size to an instance of the default value.
  *
- * @memberof glutil.GLData
+ * @memberof gl.GLData
  * @param {object} uniformData - The data to use to determine the default value.
  * @return {*} The default value.
  */
@@ -122,6 +122,7 @@ export function getUniformDefault(uniformData)
 
         case GLConstants.INT:
         case GLConstants.SAMPLER_2D:
+        case GLConstants.SAMPLER_2D_ARRAY:
             return 0;
 
         case GLConstants.INT_VEC2:

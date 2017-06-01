@@ -18,8 +18,10 @@ export default {
      *  for the options available
      * @return {WebGLRenderingContext} the WebGL context
      */
-    create(canvas, options = this.defaultOptions)
+    create(canvas, options)
     {
+        options = Object.assign({}, this.defaultOptions, options);
+
         const gl = canvas.getContext('webgl2', options)
             || canvas.getContext('experimental-webgl2', options)
             || canvas.getContext('webgl', options)

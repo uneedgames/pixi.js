@@ -1,20 +1,7 @@
+import { GLData } from '@pixi/gl';
+import { UidComponent } from '@pixi/components';
 import Attribute from './Attribute';
 import Buffer from './Buffer';
-import interleaveTypedArrays from '../utils/interleaveTypedArrays';
-import getBufferType from '../utils/getBufferType';
-
-const byteSizeMap = { 5126: 4, 5123: 2, 5121: 1 };
-let UID = 0;
-
-/* eslint-disable object-shorthand */
-const map = {
-    Float32Array: Float32Array,
-    Uint32Array: Uint32Array,
-    Int32Array: Int32Array,
-    Uint16Array: Uint16Array,
-};
-
-/* eslint-disable max-len */
 
 /**
  * The Geometry represents a model. It consists of two components:
@@ -36,14 +23,16 @@ const map = {
  * @class
  * @memberof PIXI.mesh.Geometry
  */
-export default class Geometry
+export default class Geometry extends UidComponent()
 {
     /**
-     * @param {array} buffers  an array of buffers. optional.
-     * @param {object} attributes of the geometry, optional structure of the attributes layout
+     * @param {array} [buffers] An array of buffers. optional.
+     * @param {object} [attributes] of the geometry, optional structure of the attributes layout
      */
     constructor(buffers, attributes)
     {
+        super();
+
         this.buffers = buffers || [];
 
         this.indexBuffer = null;
@@ -57,21 +46,19 @@ export default class Geometry
          * @type {Array<VertexArrayObject>}
          */
         this.glVertexArrayObjects = {};
-
-        this.id = UID++;
     }
 
     /**
     *
     * Adds an attribute to the geometry
     *
-    * @param {String} id - the name of the attribute (matching up to a shader)
+    * @param {string} id - the name of the attribute (matching up to a shader)
     * @param {PIXI.mesh.Buffer} [buffer] the buffer that holds the data of the attribute . You can also provide an Array and a buffer will be created from it.
-    * @param {Number} [size=0] the size of the attribute. If you hava 2 floats per vertex (eg position x and y) this would be 2
-    * @param {Boolean} [normalised=false] should the data be normalised.
-    * @param {Number} [type=PIXI.PIXEL_TYPES.FLOAT] what type of numbe is the attribute. Check {PIXI.TYPES} to see the ones available
-    * @param {Number} [stride=0] How far apart (in floats) the start of each value is. (used for interleaving data)
-    * @param {Number} [start=0] How far into the array to start reading values (used for interleaving data)
+    * @param {number} [size=0] the size of the attribute. If you hava 2 floats per vertex (eg position x and y) this would be 2
+    * @param {boolean} [normalised=false] should the data be normalised.
+    * @param {number} [type=PIXI.PIXEL_TYPES.FLOAT] what type of numbe is the attribute. Check {PIXI.TYPES} to see the ones available
+    * @param {number} [stride=0] How far apart (in floats) the start of each value is. (used for interleaving data)
+    * @param {number} [start=0] How far into the array to start reading values (used for interleaving data)
     *
     * @return {PIXI.mesh.Geometry} returns self, useful for chaining.
     */
@@ -86,7 +73,7 @@ export default class Geometry
         if (!buffer.data)
         {
             // its an array!
-            if (buffer instanceof Array)
+            if (Array.isArray(buffer))
             {
                 buffer = new Float32Array(buffer);
             }
@@ -122,7 +109,7 @@ export default class Geometry
     /**
      * returns the requested attribute
      *
-     * @param {String} id  the name of the attribute required
+     * @param {string} id  the name of the attribute required
      * @return {PIXI.mesh.Attribute} the attribute requested.
      */
     getAttribute(id)
@@ -197,7 +184,7 @@ export default class Geometry
 
             arrays.push(buffer.data);
 
-            sizes.push((attribute.size * byteSizeMap[attribute.type]) / 4);
+            sizes.push((attribute.size * GLData.GL_SIZE_MAP[attribute.type]) / 4);
 
             attribute.buffer = 0;
         }
@@ -320,7 +307,7 @@ export default class Geometry
         for (let i = 0; i < geometry.buffers.length; i++)
         {
             // TODO types!
-            arrays[i] = new map[getBufferType(geometry.buffers[i].data)](sizes[i]);
+            arrays[i] = new geometry.buffers[i].data.constructor(sizes[i]);
             geometryOut.buffers[i] = new Buffer(arrays[i]);
         }
 
@@ -365,7 +352,7 @@ export default class Geometry
 
                 if ((attribute.buffer | 0) === bufferIndexToCount)
                 {
-                    stride += ((attribute.size * byteSizeMap[attribute.type]) / 4);
+                    stride += ((attribute.size * GLData.GL_SIZE_MAP[attribute.type]) / 4);
                 }
             }
 
@@ -386,4 +373,48 @@ export default class Geometry
 
         return geometryOut;
     }
+}
+
+function interleaveTypedArrays(arrays, sizes)
+{
+    let outSize = 0;
+    let stride = 0;
+    const views = {};
+
+    for (let i = 0; i < arrays.length; i++)
+    {
+        stride += sizes[i];
+        outSize += arrays[i].length;
+    }
+
+    const buffer = new ArrayBuffer(outSize * 4);
+
+    let out = null;
+    let littleOffset = 0;
+
+    for (let i = 0; i < arrays.length; i++)
+    {
+        const size = sizes[i];
+        const array = arrays[i];
+        const type = array.constructor.name;
+
+        if (!views[type])
+        {
+            views[type] = new array.constructor(buffer);
+        }
+
+        out = views[type];
+
+        for (let j = 0; j < array.length; j++)
+        {
+            const indexStart = ((j / size | 0) * stride) + littleOffset;
+            const index = j % size;
+
+            out[indexStart + index] = array[j];
+        }
+
+        littleOffset += size;
+    }
+
+    return new Float32Array(buffer);
 }

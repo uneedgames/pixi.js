@@ -1,8 +1,7 @@
 import ECS from '@fae/ecs';
 import Signal from 'mini-signals';
 import removeItems from 'remove-array-items';
-import DestroyComponent from '../components/DestroyComponent';
-import UidComponent from '../components/UidComponent';
+import { DestroyComponent, UidComponent } from '@pixi/components';
 import { sayHello } from '../utils';
 import { Matrix } from '../math';
 

@@ -1,7 +1,7 @@
 {
-  "name": "@pixi/core",
+  "name": "@pixi/geometry",
   "version": "5.0.0",
-  "description": "Core Pixi rendering utilities.",
+  "description": "Base geometry utilities that are the backbone of the pixi renderer.",
   "license": "MIT",
   "main": "lib/index.js",
   "homepage": "http://pixijs.com/",
@@ -14,10 +14,5 @@
     "lib/"
   ],
   "dependencies": {
-    "@fae/ecs": "^1.0.2",
-    "@pixi/components": "^5.0.0",
-    "@pixi/geometry": "^5.0.0",
-    "@pixi/gl": "^5.0.0",
-    "mini-signals": "^1.1.1"
   }
 }

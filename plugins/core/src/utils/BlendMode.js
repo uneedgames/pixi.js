@@ -1,4 +1,4 @@
-import { BLEND_MODES } from '../data';
+import { GLConstants } from '@pixi/gl';
 
 // @ifdef DEBUG
 import debug from '../debug';
@@ -49,7 +49,10 @@ export default class BlendMode
     }
 
     /**
-     * @param {WebGLRenderingContext} gl - The rendering context to set on.
+     * Enables the blend mode on a context.
+     *
+     * @param {WebGLRenderingContext} gl The rendering context to set on.
+     * @param {boolean} pma Should this blend mode use the premultiplied alpha or npma version.
      */
     enable(gl, pma)
     {
@@ -96,7 +99,7 @@ export default class BlendMode
 }
 
 // short name, I'm lazy.
-const c = BLEND_MODES;
+const c = GLConstants;
 
 BlendMode.NORMAL = new BlendMode(
     // PMA

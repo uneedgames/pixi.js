@@ -1,12 +1,12 @@
 // export some core modules
-import * as components from './components';
+import * as ecs from './ecs';
 import * as data from './data';
 import * as geometry from './geometry';
 import * as settings from './settings';
 import * as utils from './utils';
 
 export {
-    components,
+    ecs,
     data,
     geometry,
     settings,

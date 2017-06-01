@@ -1,5 +1,4 @@
-let UID = 0;
-/* eslint-disable max-len */
+import { UidComponent, UpdateComponent } from '@pixi/components';
 
 /**
  * A wrapper for data so that it can be used and uploaded by WebGL
@@ -7,17 +6,19 @@ let UID = 0;
  * @class
  * @memberof geometry
  */
-export default class Buffer
+export default class Buffer extends UidComponent(UpdateComponent())
 {
     /**
-     * @param {ArrayBuffer| SharedArrayBuffer|ArrayBufferView} data the data to store in the buffer.
+     * @param {ArrayBuffer|SharedArrayBuffer|ArrayBufferView} data the data to store in the buffer.
      */
     constructor(data)
     {
+        super();
+
         /**
          * The data in the buffer, as a typed array
          *
-         * @type {ArrayBuffer| SharedArrayBuffer|ArrayBufferView} data  the array / typedArray
+         * @type {ArrayBuffer|SharedArrayBuffer|ArrayBufferView} data  the array / typedArray
          */
         this.data = data || new Float32Array(1);
 
@@ -29,23 +30,21 @@ export default class Buffer
          */
         this._glBuffers = {};
 
-        this._updateID = 0;
-
         this.index = false;
 
         this.static = true;
-
-        this.id = UID++;
     }
 
-    // TODO could explore flagging only a partial upload?
     /**
-     * flags this buffer as requiring an upload to the GPU
+     * Flags this buffer as requiring an upload to the GPU
+     *
+     * TODO could explore flagging only a partial upload?
      */
     update(data)
     {
         this.data = data || this.data;
-        this._updateID++;
+
+        super.update();
     }
 
     /**

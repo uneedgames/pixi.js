@@ -1,4 +1,4 @@
-import DestroyComponent from '../components/DestroyComponent';
+import { DestroyComponent } from '@pixi/components';
 
 /**
  * @class

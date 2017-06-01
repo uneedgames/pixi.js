@@ -1,5 +1,8 @@
 # Things to update:
 
+- Move program caching above GLProgram (and probably out of @pixi/gl).
+    * In fact since all GL* classes represent a GL resource, all caching should be above them!
+    * This also means the preprocess calls should happen above GLProgram?
 - Look at:
     * `math/shapes/`
 - Remove the need to check SVGs like the current docs say (Texture)
@@ -41,6 +44,8 @@
 - All events changed to signals
 
 # Definition of Terms
+
+Pixi uses a hybrid ECS/ECM pattern using prototypal inheritance as the mechanism for composition.
 
 To explain the patterns used in Pixi I need to define a few terms first. Many of these terms may seem
 familiar to you, but read carefully because they may be different than you expect.

@@ -1,6 +1,6 @@
 import CacheMap from './CacheMap';
 
-let GL_PROGRAM_CACHE = new CacheMap();
+const GL_PROGRAM_CACHE = new CacheMap();
 
 /**
  * @namespace GLProgramCache
@@ -41,7 +41,11 @@ export default {
             GL_PROGRAM_CACHE.set(gl, programCache);
         }
 
-        programCache.set(key, program);
+        programCache.set(key, {
+            program,
+            atributeData: this.extractAttributeData(gl, program),
+            uniformData: this.extractUniformData(gl, program),
+        });
     },
 
     /**
@@ -62,7 +66,9 @@ export default {
      *
      * @memberof gl.GLProgramCache
      * @param {WebGLRenderingContext} gl The context to clear the cache for.
-     * @param {string} [key] The specific key to clear from the context's cache. If not specified clears all cached programs from the context.
+     * @param {string} [key] The specific key to clear from the context's cache.
+     *  If not specified clears all cached programs from the context.
+     * @returns {boolean} True if successful
      */
     delete(gl, key)
     {
@@ -74,20 +80,7 @@ export default {
 
             return programCache.delete(key);
         }
-        else
-        {
-            return GL_PROGRAM_CACHE.delete(gl);
-        }
+
+        return GL_PROGRAM_CACHE.delete(gl);
     },
 };
-
-function hashCode(str) {
-    let res = 0;
-    const len = str.length;
-
-    for (let i = 0; i < len; ++i) {
-        res = res * 31 + str.charCodeAt(i);
-    }
-
-    return res;
-}
