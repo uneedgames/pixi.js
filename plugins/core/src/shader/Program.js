@@ -1,4 +1,8 @@
-import { GLData, GLContext, GLProgramCache } from '@pixi/gl';
+import { GLData, GLContext, GLProgram, GLConstants } from '@pixi/gl';
+
+// @ifdef DEBUG
+import { ASSERT } from '@pixi/debug';
+// @endif
 
 /**
  * Represents a WebGL Shader Program that can be used for drawing geometry.
@@ -10,62 +14,136 @@ export default class Program
     /**
      * @param {string} [vertexSrc] The source of the vertex shader.
      * @param {string} [fragmentSrc] The source of the fragment shader.
+     * @param {object} [options] Optional options
+     * @param {Object<string, number>} [options.attributeLocations] A key value pair showing which location
+     *  each attribute should sit eg `{ position: 0, uvs: 1 }`.
+     * @param {string} [options.vertexPrecision] The precision value to use for the vertex shader when preprocessing (replaces `#pragma precision`).
+     * @param {string} [options.fragmentPrecision] The precision value to use for the fragment shader when preprocessing (replaces `#pragma precision`).
      */
-    constructor(vertexSrc, fragmentSrc)
+    constructor(vertexSrc, fragmentSrc, options = {})
     {
         /**
-         * GLProgram used for reflection data.
+         * The vertex shader.
          *
-         * @private
-         * @member {GLProgram}
+         * @member {string}
          */
-        this._reflectionProgram = new GLProgramCache(Program.reflectionContext, vertexSrc, fragmentSrc);
+        this.vertexSrc = Program.preprocess(vertexSrc, options.vertexPrecision || Program.defaultVertexPrecision);
 
-        this.uniforms = Program.createUniformAccessObject(Program.reflectionContext, this._reflectionProgram.uniformData);
+        /**
+         * The fragment shader.
+         *
+         * @member {string}
+         */
+        this.fragmentSrc = Program.preprocess(fragmentSrc, options.fragmentPrecision || Program.defaultFragmentPrecision);
+
+        /**
+         * Custom attribute locations to use.
+         *
+         * @member {Object<string, number>}
+         */
+        this.customAttributeLocations = options.customAttributeLocations || {};
+
+        /**
+         * The attribute reflection data.
+         *
+         * @member {Object}
+         */
+        this.attributeData = null;
+
+        /**
+         * The uniform reflection data.
+         *
+         * @member {Object}
+         */
+        this.uniformData = null;
+
+        // initialize
+        this._initialize();
     }
 
     /**
-     * The vertex shader source of the program.
+     * Initialize our data members.
      *
-     * @readonly
-     * @member {string}
+     * @private
      */
-    get vertexSrc()
+    _initialize()
     {
-        return this._reflectionProgram.vertexSrc;
+        // TODO (cengler): Cache this so we don't do this calculation repeatedly for the same sources
+        const reflectionProgram = new GLProgram(
+            Program.reflectionContext,
+            this.vertexSrc,
+            this.fragmentSrc,
+            this.customAttributeLocations
+        );
+
+        this.attributeData = Program.extractAttributeData(reflectionProgram);
+        this.uniformData = Program.extractUniformData(reflectionProgram);
+
+        reflectionProgram.destroy();
     }
 
     /**
-     * The fragment shader source of the program.
+     * Extracts the attribute data
      *
-     * @readonly
-     * @member {string}
+     * @param {GLProgram} glProgram The program to extract from
+     * @return {object} attribute data
      */
-    get fragmentSrc()
+    static extractAttributeData(glProgram)
     {
-        return this._reflectionProgram.fragmentSrc;
+        const gl = glProgram.gl;
+        const program = glProgram.program;
+        const attributes = {};
+
+        const totalAttributes = gl.getProgramParameter(program, GLConstants.ACTIVE_ATTRIBUTES);
+
+        for (let i = 0; i < totalAttributes; ++i)
+        {
+            const attribData = gl.getActiveAttrib(program, i);
+
+            // @ifdef DEBUG
+            ASSERT(GLData.GL_SIZE_MAP[attribData.type], 'Unknown attribute type, unable to determine size.');
+            // @endif
+
+            attributes[attribData.name] = {
+                type: attribData.type,
+                name: attribData.name,
+                size: GLData.GL_SIZE_MAP[attribData.type],
+                location: gl.getAttribLocation(program, attribData.name),
+                setup: attributeSetupFunction,
+            };
+        }
+
+        return attributes;
     }
 
     /**
-     * The attribute reflection data.
+     * Extracts the uniform data
      *
-     * @readonly
-     * @member {Object}
+     * @param {GLProgram} glProgram The program to extract from
+     * @return {object} uniform data
      */
-    get attributeData()
+    static extractUniformData(glProgram)
     {
-        return this._reflectionProgram.attributeData;
-    }
+        const gl = glProgram.gl;
+        const program = glProgram.program;
+        const uniforms = {};
 
-    /**
-     * The uniform reflection data.
-     *
-     * @readonly
-     * @member {Object}
-     */
-    get uniformData()
-    {
-        return this._reflectionProgram.uniformData;
+        const totalUniforms = gl.getProgramParameter(program, GLConstants.ACTIVE_UNIFORMS);
+
+        for (let i = 0; i < totalUniforms; ++i)
+        {
+            const uniformData = gl.getActiveUniform(program, i);
+            const name = uniformData.name.replace(/\[.*?\]/, '');
+
+            uniforms[name] = {
+                type: uniformData.type,
+                size: uniformData.size,
+                location: gl.getUniformLocation(program, name),
+                value: GLData.getUniformDefault(uniformData),
+            };
+        }
+
+        return uniforms;
     }
 
     /**
@@ -121,7 +199,22 @@ export default class Program
 
         return uniforms;
     }
+
+    /**
+     * Handles the preprocessor commands meant for this lib.
+     *
+     * @param {string} source The shader source.
+     * @param {string} precision Precision value for `#pragma precision`.
+     * @returns {string} The processed source
+     */
+    static preprocess(source, precision)
+    {
+        return source.replace('#pragma precision', `precision ${precision} float;`);
+    }
 }
+
+Program.defaultVertexPrecision = 'highp';
+Program.defaultFragmentPrecision = 'highp';
 
 /**
  * The context used to generate reflection data of programs.
@@ -173,4 +266,16 @@ function getUniformGroup(nameTokens, uniform)
     }
 
     return cur;
+}
+
+function attributeSetupFunction(gl, type, normalized, stride, start)
+{
+    return gl.vertexAttribPointer(
+        this.location,
+        this.size,
+        type || this.type,
+        normalized || false,
+        stride || 0,
+        start || 0
+    );
 }
