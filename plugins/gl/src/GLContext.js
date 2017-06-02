@@ -1,6 +1,6 @@
 /**
  * @namespace GLContext
- * @memberof glutil
+ * @memberof gl
  */
 export default {
     defaultOptions: {

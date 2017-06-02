@@ -1,5 +1,7 @@
 // Taken From: https://developer.mozilla.org/en-US/docs/Web/API/WebGL_API/Constants
 
+/* eslint-disable max-len */
+
 /**
  * @namespace GLConstants
  * @memberof gl

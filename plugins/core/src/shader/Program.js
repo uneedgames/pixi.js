@@ -1,4 +1,5 @@
 import { GLData, GLContext, GLProgram, GLConstants } from '@pixi/gl';
+import { UidComponent } from '@pixi/components';
 
 // @ifdef DEBUG
 import { ASSERT } from '@pixi/debug';
@@ -7,9 +8,11 @@ import { ASSERT } from '@pixi/debug';
 /**
  * Represents a WebGL Shader Program that can be used for drawing geometry.
  *
+ * TODO (cengler): Caching.
+ *
  * @class
  */
-export default class Program
+export default class Program extends UidComponent()
 {
     /**
      * @param {string} [vertexSrc] The source of the vertex shader.
@@ -214,7 +217,7 @@ export default class Program
 }
 
 Program.defaultVertexPrecision = 'highp';
-Program.defaultFragmentPrecision = 'highp';
+Program.defaultFragmentPrecision = 'mediump';
 
 /**
  * The context used to generate reflection data of programs.

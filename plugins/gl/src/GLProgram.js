@@ -1,5 +1,4 @@
 import * as GLConstants from './GLConstants';
-import * as GLData from './GLData';
 
 // @ifdef DEBUG
 import { ASSERT } from '@pixi/debug';

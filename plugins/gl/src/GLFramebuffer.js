@@ -7,7 +7,7 @@ import GLTexture from './GLTexture';
  * use the static {@link GLFramebuffer#createRGBA} and {@link GLFramebuffer#createFloat32}
  *
  * @class
- * @memberof glutil
+ * @memberof gl
  */
 export default class GLFramebuffer
 {

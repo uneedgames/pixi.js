@@ -10,7 +10,7 @@ let lastBoundTextureId = 0;
  * Helper class to create a WebGL texture.
  *
  * @class
- * @memberof glutil
+ * @memberof gl
  */
 export default class GLTexture
 {

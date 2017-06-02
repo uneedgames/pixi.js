@@ -6,7 +6,7 @@ import Device from 'ismobilejs';
  * Only works if WebGL extensions are enabled (they usually are)
  *
  * @class
- * @memberof glutil
+ * @memberof gl
  */
 export default class GLVertexArrayObject
 {
