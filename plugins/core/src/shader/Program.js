@@ -8,7 +8,7 @@ import { ASSERT } from '@pixi/debug';
 /**
  * Represents a WebGL Shader Program that can be used for drawing geometry.
  *
- * TODO (cengler): Caching.
+ * TODO (cengler): Caching on top of this or GLProgram?
  *
  * @class
  */
