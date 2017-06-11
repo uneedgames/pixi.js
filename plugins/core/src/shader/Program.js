@@ -8,7 +8,8 @@ import { ASSERT } from '@pixi/debug';
 /**
  * Represents a WebGL Shader Program that can be used for drawing geometry.
  *
- * TODO (cengler): Caching on top of this or GLProgram?
+ * TODO (cengler): Caching on top of this or GLProgram? Should we cache
+ * Programs, GLPrograms, or WebGLPrograms?
  *
  * @class
  */
@@ -25,6 +26,8 @@ export default class Program extends UidComponent()
      */
     constructor(vertexSrc, fragmentSrc, options = {})
     {
+        super();
+
         /**
          * The vertex shader.
          *
@@ -60,8 +63,26 @@ export default class Program extends UidComponent()
          */
         this.uniformData = null;
 
+        /**
+         * The uniforms of this program, the properties on here are built
+         * dynamically based on the data reflected from the given shaders.
+         *
+         * @member {Object}
+         */
+        this.uniforms = null;
+
+        /**
+         * The functions that need to run to sync the uniform values to the GPU.
+         *
+         * @private
+         * @member {Function[]}
+         */
+        this._pendingUniformSyncs = [];
+
         // initialize
         this._initialize();
+        this._buildUniformAccessors();
+        this._buildUniformSync();
     }
 
     /**
@@ -81,8 +102,31 @@ export default class Program extends UidComponent()
 
         this.attributeData = Program.extractAttributeData(reflectionProgram);
         this.uniformData = Program.extractUniformData(reflectionProgram);
+        this.uniforms = Program.createUniformAccessObject(Program.reflectionContext, this.uniformData);
 
         reflectionProgram.destroy();
+    }
+
+    /**
+     * Adds getters/setters to this object for accessing the uniforms.
+     *
+     * @private
+     */
+    _buildUniformAccessors()
+    {
+        for (const key in this.uniformData)
+        {
+
+        }
+    }
+
+    /**
+     * Creates and stores the functions necessary to sync the uniforms of this object.
+     *
+     * @private
+     */
+    _buildUniformSyncFuncs()
+    {
     }
 
     /**
@@ -137,12 +181,15 @@ export default class Program extends UidComponent()
         {
             const uniformData = gl.getActiveUniform(program, i);
             const name = uniformData.name.replace(/\[.*?\]/, '');
+            const size = uniformData.size;
+            const type = uniformData.type;
 
             uniforms[name] = {
-                type: uniformData.type,
-                size: uniformData.size,
+                type,
+                size,
                 location: gl.getUniformLocation(program, name),
                 value: GLData.getUniformDefault(uniformData),
+                sync: size === 1 ? GLData.GL_SETTER[type] : GLData.GL_ARRAY_SETTER[type],
             };
         }
 
@@ -152,20 +199,15 @@ export default class Program extends UidComponent()
     /**
      * Creates an object for accessing and setting uniform values.
      *
-     * @static
-     * @param {WebGLRenderingContext} gl - The rendering context.
-     * @param {object} uniformData - The uniform data to create an access object for.
+     * @private
      * @return {object} uniform access object.
      */
-    static createUniformAccessObject(gl, uniformData)
+    _createUniformAccessObject()
     {
         // this is the object we will be sending back.
         // an object hierachy will be created for structs
-        const uniforms = {
-            __data: {},
-        };
-
-        const uniformKeys = Object.keys(uniformData);
+        const uniforms = {};
+        const uniformKeys = Object.keys(this.uniformData);
 
         for (let i = 0; i < uniformKeys.length; ++i)
         {
@@ -175,27 +217,23 @@ export default class Program extends UidComponent()
             const name = nameTokens[nameTokens.length - 1];
 
             const uniformGroup = getUniformGroup(nameTokens, uniforms);
-            const uniform = uniformData[fullName];
+            const uniformData = this.uniformData[fullName];
 
-            uniformGroup.__data[name] = uniform;
+            let setter = null;
+
+            if (uniformData.size === 1)
+            {
+                setter = (value) => {
+                    if (uniformData.value === value)
+                        return;
+                };
+            }
 
             Reflect.defineProperty(uniformGroup, name, {
                 enumerable: true,
                 get: () => uniform.value,
                 set: (value) =>
                 {
-                    uniform.value = value;
-
-                    const loc = uniform.location;
-
-                    if (uniform.size === 1)
-                    {
-                        GLData.GL_SETTER[uniform.type](gl, loc, value);
-                    }
-                    else
-                    {
-                        GLData.GL_ARRAY_SETTER[uniform.type](gl, loc, value);
-                    }
                 },
             });
         }
@@ -262,7 +300,7 @@ function getUniformGroup(nameTokens, uniform)
 
     for (let i = 0; i < nameTokens.length - 1; ++i)
     {
-        const o = cur[nameTokens[i]] || { __data: {} };
+        const o = cur[nameTokens[i]] || {};
 
         cur[nameTokens[i]] = o;
         cur = o;
