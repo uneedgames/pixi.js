@@ -234,6 +234,12 @@ export default class Program extends UidComponent()
                 get: () => uniform.value,
                 set: (value) =>
                 {
+                    if (uniformData.value.length)
+                    {
+                        for (uniformData.value.length)
+                    }
+                    if (uniformData.value === value)
+
                 },
             });
         }
