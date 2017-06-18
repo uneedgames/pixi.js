@@ -10,31 +10,40 @@ import { ASSERT } from '@pixi/debug';
  */
 
 /**
+ * @callback GLSetter
+ * @param {WebGLRenderingContext} gl The context to upload to
+ * @param {number} location The location in the active program to upload to
+ * @param {number|ArrayBufferView|boolean[]} value The value to upload
+ */
+
+/**
  * Map of WebGL types to their respective byte sizes.
  *
  * @memberof gl.GLData
  */
 export const GL_SIZE_MAP = {
-    [GLConstants.FLOAT]:        1,
-    [GLConstants.FLOAT_VEC2]:   2,
-    [GLConstants.FLOAT_VEC3]:   3,
-    [GLConstants.FLOAT_VEC4]:   4,
+    [GLConstants.FLOAT]:            1,
+    [GLConstants.FLOAT_VEC2]:       2,
+    [GLConstants.FLOAT_VEC3]:       3,
+    [GLConstants.FLOAT_VEC4]:       4,
 
-    [GLConstants.INT]:          1,
-    [GLConstants.INT_VEC2]:     2,
-    [GLConstants.INT_VEC3]:     3,
-    [GLConstants.INT_VEC4]:     4,
+    [GLConstants.INT]:              1,
+    [GLConstants.INT_VEC2]:         2,
+    [GLConstants.INT_VEC3]:         3,
+    [GLConstants.INT_VEC4]:         4,
 
-    [GLConstants.BOOL]:         1,
-    [GLConstants.BOOL_VEC2]:    2,
-    [GLConstants.BOOL_VEC3]:    3,
-    [GLConstants.BOOL_VEC4]:    4,
+    [GLConstants.BOOL]:             1,
+    [GLConstants.BOOL_VEC2]:        2,
+    [GLConstants.BOOL_VEC3]:        3,
+    [GLConstants.BOOL_VEC4]:        4,
 
-    [GLConstants.FLOAT_MAT2]:   4,
-    [GLConstants.FLOAT_MAT3]:   9,
-    [GLConstants.FLOAT_MAT4]:   16,
+    [GLConstants.FLOAT_MAT2]:       4,
+    [GLConstants.FLOAT_MAT3]:       9,
+    [GLConstants.FLOAT_MAT4]:       16,
 
-    [GLConstants.SAMPLER_2D]:   1,
+    [GLConstants.SAMPLER_2D]:       1,
+    [GLConstants.SAMPLER_2D_ARRAY]: 1,
+    [GLConstants.SAMPLER_CUBE]:     1,
 };
 
 /**
@@ -44,26 +53,28 @@ export const GL_SIZE_MAP = {
  * @memberof gl.GLData
  */
 export const GL_SETTER = {
-    [GLConstants.FLOAT]:        (gl, loc, value) => gl.uniform1f(loc, value),
-    [GLConstants.FLOAT_VEC2]:   (gl, loc, value) => gl.uniform2f(loc, value[0], value[1]),
-    [GLConstants.FLOAT_VEC3]:   (gl, loc, value) => gl.uniform3f(loc, value[0], value[1], value[2]),
-    [GLConstants.FLOAT_VEC4]:   (gl, loc, value) => gl.uniform4f(loc, value[0], value[1], value[2], value[3]),
+    [GLConstants.FLOAT]:            (gl, loc, value) => gl.uniform1f(loc, value),
+    [GLConstants.FLOAT_VEC2]:       (gl, loc, value) => gl.uniform2f(loc, value[0], value[1]),
+    [GLConstants.FLOAT_VEC3]:       (gl, loc, value) => gl.uniform3f(loc, value[0], value[1], value[2]),
+    [GLConstants.FLOAT_VEC4]:       (gl, loc, value) => gl.uniform4f(loc, value[0], value[1], value[2], value[3]),
 
-    [GLConstants.INT]:          (gl, loc, value) => gl.uniform1i(loc, value),
-    [GLConstants.INT_VEC2]:     (gl, loc, value) => gl.uniform2i(loc, value[0], value[1]),
-    [GLConstants.INT_VEC3]:     (gl, loc, value) => gl.uniform3i(loc, value[0], value[1], value[2]),
-    [GLConstants.INT_VEC4]:     (gl, loc, value) => gl.uniform4i(loc, value[0], value[1], value[2], value[3]),
+    [GLConstants.INT]:              (gl, loc, value) => gl.uniform1i(loc, value),
+    [GLConstants.INT_VEC2]:         (gl, loc, value) => gl.uniform2i(loc, value[0], value[1]),
+    [GLConstants.INT_VEC3]:         (gl, loc, value) => gl.uniform3i(loc, value[0], value[1], value[2]),
+    [GLConstants.INT_VEC4]:         (gl, loc, value) => gl.uniform4i(loc, value[0], value[1], value[2], value[3]),
 
-    [GLConstants.BOOL]:         (gl, loc, value) => gl.uniform1i(loc, value),
-    [GLConstants.BOOL_VEC2]:    (gl, loc, value) => gl.uniform2i(loc, value[0], value[1]),
-    [GLConstants.BOOL_VEC3]:    (gl, loc, value) => gl.uniform3i(loc, value[0], value[1], value[2]),
-    [GLConstants.BOOL_VEC4]:    (gl, loc, value) => gl.uniform4i(loc, value[0], value[1], value[2], value[3]),
+    [GLConstants.BOOL]:             (gl, loc, value) => gl.uniform1i(loc, value),
+    [GLConstants.BOOL_VEC2]:        (gl, loc, value) => gl.uniform2i(loc, value[0], value[1]),
+    [GLConstants.BOOL_VEC3]:        (gl, loc, value) => gl.uniform3i(loc, value[0], value[1], value[2]),
+    [GLConstants.BOOL_VEC4]:        (gl, loc, value) => gl.uniform4i(loc, value[0], value[1], value[2], value[3]),
 
-    [GLConstants.FLOAT_MAT2]:   (gl, loc, value) => gl.uniformMatrix2fv(loc, false, value),
-    [GLConstants.FLOAT_MAT3]:   (gl, loc, value) => gl.uniformMatrix3fv(loc, false, value),
-    [GLConstants.FLOAT_MAT4]:   (gl, loc, value) => gl.uniformMatrix4fv(loc, false, value),
+    [GLConstants.FLOAT_MAT2]:       (gl, loc, value) => gl.uniformMatrix2fv(loc, false, value),
+    [GLConstants.FLOAT_MAT3]:       (gl, loc, value) => gl.uniformMatrix3fv(loc, false, value),
+    [GLConstants.FLOAT_MAT4]:       (gl, loc, value) => gl.uniformMatrix4fv(loc, false, value),
 
-    [GLConstants.SAMPLER_2D]:   (gl, loc, value) => gl.uniform1i(loc, value),
+    [GLConstants.SAMPLER_2D]:       (gl, loc, value) => gl.uniform1i(loc, value),
+    [GLConstants.SAMPLER_2D_ARRAY]: (gl, loc, value) => gl.uniform1i(loc, value),
+    [GLConstants.SAMPLER_CUBE]:     (gl, loc, value) => gl.uniform1i(loc, value),
 };
 
 /**
@@ -73,34 +84,36 @@ export const GL_SETTER = {
  * @memberof gl.GLData
  */
 export const GL_ARRAY_SETTER = {
-    [GLConstants.FLOAT]:        (gl, loc, value) => gl.uniform1fv(loc, value),
-    [GLConstants.FLOAT_VEC2]:   (gl, loc, value) => gl.uniform2fv(loc, value[0], value[1]),
-    [GLConstants.FLOAT_VEC3]:   (gl, loc, value) => gl.uniform3fv(loc, value[0], value[1], value[2]),
-    [GLConstants.FLOAT_VEC4]:   (gl, loc, value) => gl.uniform4fv(loc, value[0], value[1], value[2], value[3]),
+    [GLConstants.FLOAT]:            (gl, loc, value) => gl.uniform1fv(loc, value),
+    [GLConstants.FLOAT_VEC2]:       (gl, loc, value) => gl.uniform2fv(loc, value[0], value[1]),
+    [GLConstants.FLOAT_VEC3]:       (gl, loc, value) => gl.uniform3fv(loc, value[0], value[1], value[2]),
+    [GLConstants.FLOAT_VEC4]:       (gl, loc, value) => gl.uniform4fv(loc, value[0], value[1], value[2], value[3]),
 
-    [GLConstants.INT]:          (gl, loc, value) => gl.uniform1iv(loc, value),
-    [GLConstants.INT_VEC2]:     (gl, loc, value) => gl.uniform2iv(loc, value[0], value[1]),
-    [GLConstants.INT_VEC3]:     (gl, loc, value) => gl.uniform3iv(loc, value[0], value[1], value[2]),
-    [GLConstants.INT_VEC4]:     (gl, loc, value) => gl.uniform4iv(loc, value[0], value[1], value[2], value[3]),
+    [GLConstants.INT]:              (gl, loc, value) => gl.uniform1iv(loc, value),
+    [GLConstants.INT_VEC2]:         (gl, loc, value) => gl.uniform2iv(loc, value[0], value[1]),
+    [GLConstants.INT_VEC3]:         (gl, loc, value) => gl.uniform3iv(loc, value[0], value[1], value[2]),
+    [GLConstants.INT_VEC4]:         (gl, loc, value) => gl.uniform4iv(loc, value[0], value[1], value[2], value[3]),
 
-    [GLConstants.BOOL]:         (gl, loc, value) => gl.uniform1iv(loc, value),
-    [GLConstants.BOOL_VEC2]:    (gl, loc, value) => gl.uniform2iv(loc, value[0], value[1]),
-    [GLConstants.BOOL_VEC3]:    (gl, loc, value) => gl.uniform3iv(loc, value[0], value[1], value[2]),
-    [GLConstants.BOOL_VEC4]:    (gl, loc, value) => gl.uniform4iv(loc, value[0], value[1], value[2], value[3]),
+    [GLConstants.BOOL]:             (gl, loc, value) => gl.uniform1iv(loc, value),
+    [GLConstants.BOOL_VEC2]:        (gl, loc, value) => gl.uniform2iv(loc, value[0], value[1]),
+    [GLConstants.BOOL_VEC3]:        (gl, loc, value) => gl.uniform3iv(loc, value[0], value[1], value[2]),
+    [GLConstants.BOOL_VEC4]:        (gl, loc, value) => gl.uniform4iv(loc, value[0], value[1], value[2], value[3]),
 
-    [GLConstants.FLOAT_MAT2]:   (gl, loc, value) => gl.uniformMatrix2fv(loc, false, value),
-    [GLConstants.FLOAT_MAT3]:   (gl, loc, value) => gl.uniformMatrix3fv(loc, false, value),
-    [GLConstants.FLOAT_MAT4]:   (gl, loc, value) => gl.uniformMatrix4fv(loc, false, value),
+    [GLConstants.FLOAT_MAT2]:       (gl, loc, value) => gl.uniformMatrix2fv(loc, false, value),
+    [GLConstants.FLOAT_MAT3]:       (gl, loc, value) => gl.uniformMatrix3fv(loc, false, value),
+    [GLConstants.FLOAT_MAT4]:       (gl, loc, value) => gl.uniformMatrix4fv(loc, false, value),
 
-    [GLConstants.SAMPLER_2D]:   (gl, loc, value) => gl.uniform1iv(loc, value),
+    [GLConstants.SAMPLER_2D]:       (gl, loc, value) => gl.uniform1iv(loc, value),
+    [GLConstants.SAMPLER_2D_ARRAY]: (gl, loc, value) => gl.uniform1iv(loc, value),
+    [GLConstants.SAMPLER_CUBE]:     (gl, loc, value) => gl.uniform1iv(loc, value),
 };
 
 /**
  * Maps a uniform data type and size to an instance of the default value.
  *
  * @memberof gl.GLData
- * @param {object} uniformData - The data to use to determine the default value.
- * @return {*} The default value.
+ * @param {WebGLActiveInfo} uniformData The data to use to determine the default value.
+ * @return {number|ArrayBufferView|boolean[]} The default value.
  */
 export function getUniformDefault(uniformData)
 {
