@@ -1,10 +1,9 @@
 import Renderer from '../Renderer';
 import Manager from '../Manager';
-import ContextAwareComponent from '../../components/ContextAwareComponent';
 import createContext from '../../utils/createContext';
 
 // @ifdef DEBUG
-import debug from '../../debug';
+import { ASSERT } from '@pixi/debug';
 // @endif
 
 /**
@@ -41,7 +40,7 @@ export default class ContextManager extends Manager
         else
         {
             // @ifdef DEBUG
-            debug.ASSERT(options.canvas instanceof HTMLCanvasElement, 'Either the `context` or `canvas` options must be set.');
+            ASSERT(options.canvas instanceof HTMLCanvasElement, 'Either the `context` or `canvas` options must be set.');
             // @endif
 
             this._initFromOptions({
@@ -54,7 +53,7 @@ export default class ContextManager extends Manager
         }
 
         // @ifdef DEBUG
-        debug.ASSERT(this.gl != null, 'Failed to create gl context.');
+        ASSERT(this.gl != null, 'Failed to create gl context.');
         // @endif
 
         // setup event listeners

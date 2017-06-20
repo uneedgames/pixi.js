@@ -1,4 +1,4 @@
-import { GLData } from '@pixi/gl';
+import { GLConstants, GLData } from '@pixi/gl';
 
 /**
  * @class
@@ -8,8 +8,9 @@ export default class UniformData
     /**
      * @param {WebGLActiveInfo} data The result of a `getActiveUniform` call
      * @param {number} location The result of a `getAttribLocation` call
+     * @param {number} textureSlot The texture slot this uniform occupies (if any)
      */
-    constructor(data, location)
+    constructor(data, location, textureSlot = 0)
     {
         /**
          * The GL type of the uniform (FLOAT, FLOAT_VEC2, etc.)
@@ -26,7 +27,7 @@ export default class UniformData
         this.name = data.name.replace(/\[.*?\]/, '');
 
         /**
-         * The size of the uniform's type (FLOAT = 1, FLOAT_VEC2 = 2, etc.)
+         * The size of the uniform. All non-array values are size `1`.
          *
          * @member {number}
          */
@@ -48,6 +49,22 @@ export default class UniformData
          * @member {number}
          */
         this.value = GLData.getUniformDefault(data);
+
+        /**
+         * If true then this uniform is a texture of some kind.
+         *
+         * @member {boolean}
+         */
+        this.isTexture = this.type === GLConstants.SAMPLER_2D
+                        || this.type === GLConstants.SAMPLER_CUBE
+                        || this.type === GLConstants.SAMPLER_2D_ARRAY;
+
+        /**
+         * The texture slot this uniform uses, only really useful if `isTexture` is true.
+         *
+         * @member {number}
+         */
+        this.textureSlot = textureSlot;
 
         /**
          * The function used to upload the uniform to the GPU.

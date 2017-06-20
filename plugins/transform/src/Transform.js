@@ -1,4 +1,8 @@
-import { math/* @ifdef DEBUG */, debug /* @endif */ } from '@fae/core';
+import { math } from '@fae/core';
+
+/* @ifdef DEBUG */
+import { ASSERT } from '@pixi/debug';
+/* @endif */
 
 /**
  * Generic class to deal with traditional 2D matrix transforms.
@@ -350,7 +354,7 @@ export default class Transform
         }
 
         // @ifdef DEBUG
-        debug.ASSERT(this._lt.valid(), 'Invalid local transform, property is set incorrectly somewhere...');
+        ASSERT(this._lt.valid(), 'Invalid local transform, property is set incorrectly somewhere...');
         // @endif
 
         if (this.parent)
@@ -379,7 +383,7 @@ export default class Transform
         }
 
         // @ifdef DEBUG
-        debug.ASSERT(this._wt.valid(), 'Invalid world transform, property is set incorrectly somewhere...');
+        ASSERT(this._wt.valid(), 'Invalid world transform, property is set incorrectly somewhere...');
         // @endif
     }
 

@@ -1,6 +1,10 @@
 import determineCrossOrigin from '../../utils/determineCrossOrigin';
 import TextureResource from './TextureResource';
-import { data as coreData /* @ifdef DEBUG */, debug /* @endif */ } from '@pixi/core';
+import { DEVICE_SUPPORT } from '@pixi/data';
+
+// @ifdef DEBUG
+import { ASSERT } from '@pixi/debug';
+// @endif
 
 /**
  * @class
@@ -17,11 +21,11 @@ export default class ImageResource extends TextureResource
 
         // @ifdef DEBUG
         /* eslint-disable max-len */
-        debug.ASSERT(this.data instanceof HTMLImageElement || this.data instanceof ImageBitmap, 'ImageResource expects an HTMLImageElement as the underlying data.');
+        ASSERT(this.data instanceof HTMLImageElement || this.data instanceof ImageBitmap, 'ImageResource expects an HTMLImageElement as the underlying data.');
         /* eslint-enable max-len */
         // @endif
 
-        if (coreData.DEVICE_SUPPORT.IMAGE_BITMAP && this.data instanceof ImageBitmap)
+        if (DEVICE_SUPPORT.IMAGE_BITMAP && this.data instanceof ImageBitmap)
         {
             this._complete();
         }
@@ -53,7 +57,7 @@ export default class ImageResource extends TextureResource
      */
     _complete()
     {
-        if (coreData.DEVICE_SUPPORT.IMAGE_BITMAP && !(this.data instanceof ImageBitmap))
+        if (DEVICE_SUPPORT.IMAGE_BITMAP && !(this.data instanceof ImageBitmap))
         {
             window.createImageBitmap(this.data)
                 .then((imageBitmap) =>

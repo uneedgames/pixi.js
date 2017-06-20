@@ -2,8 +2,12 @@ import TextureSource from './TextureSource';
 import TextureUVs from './TextureUVs';
 import BufferResource from './resources/BufferResource';
 import createResource from './resources/createResource';
-import { components /* @ifdef DEBUG */, debug /* @endif */ } from '@pixi/core';
+import { UpdateComponent, DestroyComponent, UidComponent } from '@pixi/components';
 import { Rectangle } from '../math';
+
+// @ifdef DEBUG
+import { ASSERT } from '@pixi/debug';
+// @endif
 
 /**
  * A Texture is a wrapper around a TextureSource. It represents the frame of the
@@ -26,9 +30,9 @@ import { Rectangle } from '../math';
  * @memberof texture
  */
 export default class Texture extends
-    components.UpdateComponent(
-    components.DestroyComponent(
-    components.UidComponent(
+    UpdateComponent(
+    DestroyComponent(
+    UidComponent(
     )))
 {
     /**
@@ -55,7 +59,7 @@ export default class Texture extends
         }
 
         // @ifdef DEBUG
-        debug.ASSERT(source instanceof TextureSource, 'Source passed to Texture is not a TextureSource.', source);
+        ASSERT(source instanceof TextureSource, 'Source passed to Texture is not a TextureSource.', source);
         // @endif
 
         /**
@@ -225,7 +229,7 @@ export default class Texture extends
         // @ifdef DEBUG
         const v = this._frame;
 
-        debug.ASSERT(
+        ASSERT(
             v.x >= 0 && v.y >= 0 && v.x + v.width <= this.source.width && v.y + v.height <= this.source.height,
             'Frame for texture doesn\'t fit within the source size.',
             v

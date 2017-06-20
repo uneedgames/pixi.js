@@ -1,7 +1,7 @@
 import { GLConstants } from '@pixi/gl';
 
 // @ifdef DEBUG
-import debug from '../debug';
+import { ASSERT } from '@pixi/debug';
 // @endif
 
 /**
@@ -24,10 +24,10 @@ export default class BlendMode
     {
         // @ifdef DEBUG
         /* eslint-disable max-len */
-        debug.ASSERT(Array.isArray(pmaFuncParams) && typeof pmaFuncParams[0] === 'number' && (pmaFuncParams.length === 2 || pmaFuncParams.length === 4), 'Blend func params must be an array of length 2 or 4.');
-        debug.ASSERT(Array.isArray(pmaEquationParams) && typeof pmaEquationParams[0] === 'number' && (pmaEquationParams.length === 1 || pmaEquationParams.length === 2), 'Blend equation params must be an array of length 1 or 2.');
-        debug.ASSERT(!npmaFuncParams || (Array.isArray(npmaFuncParams) && typeof npmaFuncParams[0] === 'number' && (npmaFuncParams.length === 2 || npmaFuncParams.length === 4)), 'Blend func params must be an array of length 2 or 4.');
-        debug.ASSERT(!npmaEquationParams || (Array.isArray(npmaEquationParams) && typeof npmaEquationParams[0] === 'number' && (npmaEquationParams.length === 1 || npmaEquationParams.length === 2)), 'Blend equation params must be an array of length 1 or 2.');
+        ASSERT(Array.isArray(pmaFuncParams) && typeof pmaFuncParams[0] === 'number' && (pmaFuncParams.length === 2 || pmaFuncParams.length === 4), 'Blend func params must be an array of length 2 or 4.');
+        ASSERT(Array.isArray(pmaEquationParams) && typeof pmaEquationParams[0] === 'number' && (pmaEquationParams.length === 1 || pmaEquationParams.length === 2), 'Blend equation params must be an array of length 1 or 2.');
+        ASSERT(!npmaFuncParams || (Array.isArray(npmaFuncParams) && typeof npmaFuncParams[0] === 'number' && (npmaFuncParams.length === 2 || npmaFuncParams.length === 4)), 'Blend func params must be an array of length 2 or 4.');
+        ASSERT(!npmaEquationParams || (Array.isArray(npmaEquationParams) && typeof npmaEquationParams[0] === 'number' && (npmaEquationParams.length === 1 || npmaEquationParams.length === 2)), 'Blend equation params must be an array of length 1 or 2.');
         /* eslint-enable max-len */
         // @endif
 

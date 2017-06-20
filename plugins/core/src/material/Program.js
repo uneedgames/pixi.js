@@ -152,6 +152,7 @@ export default class Program extends UidComponent()
         const gl = glProgram.gl;
         const program = glProgram.program;
         const out = {};
+        let textureSlot = 0;
 
         const total = gl.getProgramParameter(program, GLConstants.ACTIVE_UNIFORMS);
 
@@ -160,6 +161,11 @@ export default class Program extends UidComponent()
             const data = gl.getActiveUniform(program, i);
 
             out[name] = new UniformData(data, gl.getUniformLocation(data, name));
+
+            if (out[name].isTexture)
+            {
+                out[name].textureSlot = textureSlot++;
+            }
         }
 
         return out;

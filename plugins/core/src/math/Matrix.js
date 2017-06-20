@@ -1,7 +1,7 @@
 import Point from './Point';
 
 // @ifdef DEBUG
-import debug from '../debug';
+import { ASSERT } from '@pixi/debug';
 // @endif
 
 /**
@@ -21,7 +21,7 @@ import debug from '../debug';
  * | 0  0  1 |
  * ```
  *
- * Since the last row is ignored so the operations are faster.
+ * The last row is ignored so the operations are faster.
  *
  * For those unfamiliar with 3x3 transformation matrices, you could say that:
  *
@@ -129,7 +129,7 @@ export default class Matrix
         const ty = this.array[7];
 
         // @ifdef DEBUG
-        debug.ASSERT((a * d) - (b * c), 'The determinant of a Matrix can not be 0 when applying inverse to a point.', this);
+        ASSERT((a * d) - (b * c), 'The determinant of a Matrix can not be 0 when applying inverse to a point.', this);
         // @endif
 
         const det = 1.0 / ((a * d) - (b * c));
@@ -369,7 +369,7 @@ export default class Matrix
         const ty = this.array[4];
 
         // @ifdef DEBUG
-        debug.ASSERT((a * d) - (b * c), 'The determinant of a Matrix can not be 0 when inverting.', this);
+        ASSERT((a * d) - (b * c), 'The determinant of a Matrix can not be 0 when inverting.', this);
         // @endif
 
         const det = 1.0 / ((a * d) - (b * c));

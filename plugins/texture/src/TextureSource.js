@@ -2,7 +2,14 @@ import Signal from 'mini-signals';
 import bitTwiddle from 'bit-twiddle';
 import createResource from './resources/createResource';
 import BufferResource from './resources/BufferResource';
-import { components, data, settings /* @ifdef DEBUG */, debug /* @endif */ } from '@pixi/core';
+import { GLConstants } from '@pixi/gl';
+import { DEVICE_SUPPORT } from '@pixi/data';
+import { settings } from '@pixi/core';
+import { UpdateComponent, DestroyComponent, UidComponent } from '@pixi/components';
+
+/* @ifdef DEBUG */
+import { ASSERT } from '@pixi/debug';
+/* @endif */
 
 /**
  * A TextureSource is a wrapper around a texture resource that can be drawn with the
@@ -15,9 +22,9 @@ import { components, data, settings /* @ifdef DEBUG */, debug /* @endif */ } fro
  * @memberof texture
  */
 export default class TextureSource extends
-    components.UpdateComponent(
-    components.DestroyComponent(
-    components.UidComponent(
+    UpdateComponent(
+    DestroyComponent(
+    UidComponent(
     )))
 {
     /**
@@ -77,7 +84,7 @@ export default class TextureSource extends
          * The scale mode to apply when scaling this texture
          *
          * @member {number}
-         * @see data.SCALE_MODES
+         * @see GLConstants
          */
         this.scaleMode = scaleMode;
 
@@ -85,7 +92,7 @@ export default class TextureSource extends
          * The texture wrapping mode of the texture.
          *
          * @type {number}
-         * @see data.WRAP_MODES
+         * @see GLConstants
          */
         this.wrapMode = wrapMode;
 
@@ -93,7 +100,7 @@ export default class TextureSource extends
          * The pixel format of the texture.
          *
          * @member {number}
-         * @see data.FORMATS
+         * @see GLConstants
          */
         this.format = format;
 
@@ -101,7 +108,7 @@ export default class TextureSource extends
          * The data type of the texture.
          *
          * @member {number}
-         * @see data.TYPES
+         * @see GLConstants
          */
         this.type = type;
 
@@ -109,7 +116,7 @@ export default class TextureSource extends
          * The texture target type of the texture.
          *
          * @member {number}
-         * @see data.TARGETS
+         * @see GLConstants
          */
         this.target = target;
 
@@ -324,26 +331,28 @@ export default class TextureSource extends
      *
      * @static
      * @param {ArrayBufferView} array The data array to create base texture from.
-     * @param {number} format The {@link data.FORMATS} to use for the texture, by default this is RGBA.
-     * @param {number} type The {@link data.TYPES} to use for the texture, by default this is auto-detected.
+     * @param {number} width The width of the texture to create
+     * @param {number} height The height of the texture to create
+     * @param {number} format The {@link GLConstants} to use for the texture format, by default this is `RGBA`.
+     * @param {number} type The {@link GLConstants} to use for the texture type, by default this is auto-detected.
      * @return {TextureSource} The new base texture.
      */
-    static fromArrayBufferView(array, width = array.length, height = 1, format = data.PIXEL_FORMATS.RGBA, type = 0)
+    static fromArrayBufferView(array, width = array.length, height = 1, format = GLConstants.RGBA, type = 0)
     {
         if (type === 0)
         {
-            if (array instanceof Int8Array) type = data.PIXEL_TYPES.BYTE;
-            else if (array instanceof Uint8Array) type = data.PIXEL_TYPES.UNSIGNED_BYTE;
-            else if (array instanceof Int16Array) type = data.PIXEL_TYPES.SHORT;
-            else if (array instanceof Uint16Array) type = data.PIXEL_TYPES.UNSIGNED_SHORT;
-            else if (array instanceof Int32Array) type = data.PIXEL_TYPES.INT;
-            else if (array instanceof Uint32Array) type = data.PIXEL_TYPES.UNSIGNED_INT;
-            else if (array instanceof Float32Array) type = data.PIXEL_TYPES.FLOAT;
+            if (array instanceof Int8Array) type = GLConstants.BYTE;
+            else if (array instanceof Uint8Array) type = GLConstants.UNSIGNED_BYTE;
+            else if (array instanceof Int16Array) type = GLConstants.SHORT;
+            else if (array instanceof Uint16Array) type = GLConstants.UNSIGNED_SHORT;
+            else if (array instanceof Int32Array) type = GLConstants.INT;
+            else if (array instanceof Uint32Array) type = GLConstants.UNSIGNED_INT;
+            else if (array instanceof Float32Array) type = GLConstants.FLOAT;
         }
 
         // @ifdef DEBUG
-        debug.ASSERT(
-            type !== 0 && Object.keys(data.TYPES).reduce((p, k) => p || type === data.TYPES[k], false),
+        ASSERT(
+            type >= GLConstants.BYTE && type <= GLConstants.FLOAT,
             'Invalid type given to fromArrayBufferView, or we were unable to detect the correct type.',
             type
         );
@@ -355,11 +364,11 @@ export default class TextureSource extends
                 resolution: 1,
                 width,
                 height,
-                scaleMode: data.SCALE_MODES.NEAREST,
-                wrapMode: data.WRAP_MODES.CLAMP,
+                scaleMode: GLConstants.NEAREST,
+                wrapMode: GLConstants.CLAMP_TO_EDGE,
                 format,
                 type,
-                target: data.TEXTURE_TARGETS.TEXTURE_2D,
+                target: GLConstants.TEXTURE_2D,
                 mipmap: false,
                 premultiplyAlpha: false,
             }
@@ -383,11 +392,11 @@ export default class TextureSource extends
  * @default SCALE_MODES.LINEAR
  */
 TextureSource.defaults = {
-    scaleMode: data.SCALE_MODES.LINEAR,
-    wrapMode: data.WRAP_MODES.CLAMP_TO_EDGE,
-    format: data.PIXEL_FORMATS.RGBA,
-    type: data.PIXEL_TYPES.UNSIGNED_BYTE,
-    target: data.TEXTURE_TARGETS.TEXTURE_2D,
+    scaleMode: GLConstants.LINEAR,
+    wrapMode: GLConstants.CLAMP_TO_EDGE_TO_EDGE,
+    format: GLConstants.RGBA,
+    type: GLConstants.UNSIGNED_BYTE,
+    target: GLConstants.TEXTURE_2D,
     mipMap: true,
     premultiplyAlpha: true,
 };
@@ -396,41 +405,97 @@ TextureSource.defaults = {
 function validateTextureSourceParams(resource, { scaleMode, wrapMode, format, type, target, mipmap, premultiplyAlpha })
 {
     /* eslint-disable max-len */
-    debug.ASSERT(!!resource, `Resource is required to create a TextureSource.`, resource);
-    debug.ASSERT(Object.keys(data.SCALE_MODES).reduce((p, k) => p || scaleMode === data.SCALE_MODES[k], false), `Invalid scaleMode.`, scaleMode);
-    debug.ASSERT(Object.keys(data.WRAP_MODES).reduce((p, k) => p || wrapMode === data.WRAP_MODES[k], false), `Invalid wrapMode.`, wrapMode);
-    debug.ASSERT(Object.keys(data.FORMATS).reduce((p, k) => p || format === data.FORMATS[k], false), `Invalid format.`, format);
-    debug.ASSERT(Object.keys(data.TYPES).reduce((p, k) => p || type === data.TYPES[k], false), `Invalid type.`, type);
-    debug.ASSERT(Object.keys(data.TARGETS).reduce((p, k) => p || target === data.TARGETS[k], false), `Invalid type.`, target);
-    debug.ASSERT(typeof mipmap === 'boolean', `Invalid mipmap value.`, mipmap);
-    debug.ASSERT(typeof premultiplyAlpha === 'boolean', `Invalid premultiplyAlpha value.`, premultiplyAlpha);
+    ASSERT(!!resource, `Resource is required to create a TextureSource.`, resource);
+    ASSERT([
+        GLConstants.NEAREST,
+        GLConstants.LINEAR,
+        GLConstants.NEAREST_MIPMAP_NEAREST,
+        GLConstants.LINEAR_MIPMAP_NEAREST,
+        GLConstants.NEAREST_MIPMAP_LINEAR,
+        GLConstants.LINEAR_MIPMAP_LINEAR,
+    ].indexOf(scaleMode) !== -1, `Invalid scaleMode.`, scaleMode);
+    ASSERT([
+        GLConstants.REPEAT,
+        GLConstants.CLAMP_TO_EDGE,
+        GLConstants.MIRRORED_REPEAT,
+    ].indexOf(wrapMode) !== -1, `Invalid wrapMode.`, wrapMode);
+    ASSERT([
+        GLConstants.DEPTH_COMPONENT,
+        GLConstants.ALPHA,
+        GLConstants.RGB,
+        GLConstants.RGBA,
+        GLConstants.LUMINANCE,
+        GLConstants.LUMINANCE_ALPHA,
+        GLConstants.DEPTH_STENCIL,
+    ].indexOf(format) !== -1, `Invalid format.`, format);
+    ASSERT([
+        GLConstants.BYTE,
+        GLConstants.UNSIGNED_BYTE,
+        GLConstants.SHORT,
+        GLConstants.UNSIGNED_SHORT,
+        GLConstants.INT,
+        GLConstants.UNSIGNED_INT,
+        GLConstants.FLOAT,
+        GLConstants.UNSIGNED_SHORT_4_4_4_4,
+        GLConstants.UNSIGNED_SHORT_5_5_5_1,
+        GLConstants.UNSIGNED_SHORT_5_6_5,
+        GLConstants.UNSIGNED_INT_2_10_10_10_REV,
+        GLConstants.UNSIGNED_INT_10F_11F_11F_REV,
+        GLConstants.UNSIGNED_INT_5_9_9_9_REV,
+        GLConstants.FLOAT_32_UNSIGNED_INT_24_8_REV,
+        GLConstants.UNSIGNED_INT_24_8,
+        GLConstants.HALF_FLOAT,
+        GLConstants.RG,
+        GLConstants.RG_INTEGER,
+        GLConstants.INT_2_10_10_10_REV,
+    ].indexOf(type) !== -1, `Invalid type.`, type);
+    ASSERT([
+        GLConstants.TEXTURE_2D,
+        GLConstants.TEXTURE_2D_ARRAY,
+        GLConstants.TEXTURE_3D,
+        GLConstants.TEXTURE_CUBE_MAP,
+        GLConstants.TEXTURE_CUBE_MAP_POSITIVE_X,
+        GLConstants.TEXTURE_CUBE_MAP_NEGATIVE_X,
+        GLConstants.TEXTURE_CUBE_MAP_POSITIVE_Y,
+        GLConstants.TEXTURE_CUBE_MAP_NEGATIVE_Y,
+        GLConstants.TEXTURE_CUBE_MAP_POSITIVE_Z,
+        GLConstants.TEXTURE_CUBE_MAP_NEGATIVE_Z,
+    ].indexOf(target) !== -1, `Invalid type.`, target);
+    ASSERT(typeof mipmap === 'boolean', `Invalid mipmap value.`, mipmap);
+    ASSERT(typeof premultiplyAlpha === 'boolean', `Invalid premultiplyAlpha value.`, premultiplyAlpha);
+
+    // Ensure the targets have valid resource data
+    if (target === GLConstants.TEXTURE_2D_ARRAY)
+    {
+        ASSERT(Array.isArray(resource.data), 'The TEXTURE_2D_ARRAY target requires an array as the data of the texture resource.');
+    }
 
     // Ensure some types match for buffers.
     if (resource.data && resource.data.buffer instanceof ArrayBuffer)
     {
-        const w2 = data.DEVICE_SUPPORT.WEBGL2;
-        const depthTex = data.DEVICE_SUPPORT.WEBGL_EXTENSIONS.WEBGL_depth_texture;
-        const texFloat = data.DEVICE_SUPPORT.WEBGL_EXTENSIONS.WEBGL_depth_texture;
-        const texHalfFloat = data.DEVICE_SUPPORT.WEBGL_EXTENSIONS.OES_texture_half_float;
+        const w2 = DEVICE_SUPPORT.WEBGL2;
+        const depthTex = DEVICE_SUPPORT.WEBGL_EXTENSIONS.WEBGL_depth_texture;
+        const texFloat = DEVICE_SUPPORT.WEBGL_EXTENSIONS.WEBGL_depth_texture;
+        const texHalfFloat = DEVICE_SUPPORT.WEBGL_EXTENSIONS.OES_texture_half_float;
 
         // validate the length of the array view matches the format expectation
         switch (format)
         {
-            case data.PIXEL_FORMATS.RGBA:
-                debug.ASSERT(resource.data.length % 4 === 0, 'The RGBA format requires 4 components per pixel.');
+            case GLConstants.RGBA:
+                ASSERT(resource.data.length % 4 === 0, 'The RGBA format requires 4 components per pixel.');
                 break;
 
-            case data.PIXEL_FORMATS.RGB:
-                debug.ASSERT(resource.data.length % 3 === 0, 'The RGB format requires 3 components per pixel.');
+            case GLConstants.RGB:
+                ASSERT(resource.data.length % 3 === 0, 'The RGB format requires 3 components per pixel.');
                 break;
 
-            case data.PIXEL_FORMATS.LUMINANCE_ALPHA:
-                debug.ASSERT(resource.data.length % 2 === 0, 'The LUMINANCE_ALPHA format requires 2 components per pixel.');
+            case GLConstants.LUMINANCE_ALPHA:
+                ASSERT(resource.data.length % 2 === 0, 'The LUMINANCE_ALPHA format requires 2 components per pixel.');
                 break;
 
-            case data.PIXEL_FORMATS.DEPTH_COMPONENT:
-            case data.PIXEL_FORMATS.DEPTH_STENCIL:
-                debug.ASSERT(w2 || depthTex, 'The DEPTH_COMPONENT and DEPTH_STENCIL formats require either WebGL2 or the WEBGL_depth_texture extension.');
+            case GLConstants.DEPTH_COMPONENT:
+            case GLConstants.DEPTH_STENCIL:
+                ASSERT(w2 || depthTex, 'The DEPTH_COMPONENT and DEPTH_STENCIL formats require either WebGL2 or the WEBGL_depth_texture extension.');
                 break;
 
             // ALPHA, LUMINANCE, DEPTH_COMPONENT, and DEPTH_STENCIL are 1 byte per pixel so no need to check size.
@@ -440,64 +505,64 @@ function validateTextureSourceParams(resource, { scaleMode, wrapMode, format, ty
         switch (type)
         {
             // WebGL 1
-            case data.PIXEL_TYPES.UNSIGNED_BYTE:
-                debug.ASSERT(resource.data instanceof Uint8Array, 'The UNSIGNED_BYTE type requires using an Uint8Array.');
+            case GLConstants.UNSIGNED_BYTE:
+                ASSERT(resource.data instanceof Uint8Array, 'The UNSIGNED_BYTE type requires using an Uint8Array.');
                 break;
-            case data.PIXEL_TYPES.UNSIGNED_SHORT_5_6_5:
-                debug.ASSERT(resource.data instanceof Uint16Array, 'The UNSIGNED_SHORT_5_6_5 type requires using an Uint16Array.');
+            case GLConstants.UNSIGNED_SHORT_5_6_5:
+                ASSERT(resource.data instanceof Uint16Array, 'The UNSIGNED_SHORT_5_6_5 type requires using an Uint16Array.');
                 break;
-            case data.PIXEL_TYPES.UNSIGNED_SHORT_4_4_4_4:
-                debug.ASSERT(resource.data instanceof Uint16Array, 'The UNSIGNED_SHORT_4_4_4_4 type requires using an Uint16Array.');
+            case GLConstants.UNSIGNED_SHORT_4_4_4_4:
+                ASSERT(resource.data instanceof Uint16Array, 'The UNSIGNED_SHORT_4_4_4_4 type requires using an Uint16Array.');
                 break;
-            case data.PIXEL_TYPES.UNSIGNED_SHORT_5_5_5_1:
-                debug.ASSERT(resource.data instanceof Uint16Array, 'The UNSIGNED_SHORT_4_4_4_4 type requires using an Uint16Array.');
+            case GLConstants.UNSIGNED_SHORT_5_5_5_1:
+                ASSERT(resource.data instanceof Uint16Array, 'The UNSIGNED_SHORT_4_4_4_4 type requires using an Uint16Array.');
                 break;
 
             // WEBGL_depth_texture (and WebGL 2)
-            case data.PIXEL_TYPES.UNSIGNED_SHORT:
-                debug.ASSERT((w2 || depthTex) && resource.data instanceof Uint16Array, 'The UNSIGNED_SHORT type requires using an Uint16Array, and WebGL2 or WEBGL_depth_texture.');
+            case GLConstants.UNSIGNED_SHORT:
+                ASSERT((w2 || depthTex) && resource.data instanceof Uint16Array, 'The UNSIGNED_SHORT type requires using an Uint16Array, and WebGL2 or WEBGL_depth_texture.');
                 break;
-            case data.PIXEL_TYPES.UNSIGNED_INT:
-                debug.ASSERT((w2 || depthTex) && resource.data instanceof Uint32Array, 'The UNSIGNED_INT_5_9_9_9_REV type requires using an Uint32Array, and WebGL2 or WEBGL_depth_texture.');
+            case GLConstants.UNSIGNED_INT:
+                ASSERT((w2 || depthTex) && resource.data instanceof Uint32Array, 'The UNSIGNED_INT_5_9_9_9_REV type requires using an Uint32Array, and WebGL2 or WEBGL_depth_texture.');
                 break;
-            case data.PIXEL_TYPES.UNSIGNED_INT_24_8:
-                debug.ASSERT((w2 || depthTex) && resource.data instanceof Uint32Array, 'The UNSIGNED_INT_5_9_9_9_REV type requires using an Uint32Array, and WebGL2 or WEBGL_depth_texture.');
+            case GLConstants.UNSIGNED_INT_24_8:
+                ASSERT((w2 || depthTex) && resource.data instanceof Uint32Array, 'The UNSIGNED_INT_5_9_9_9_REV type requires using an Uint32Array, and WebGL2 or WEBGL_depth_texture.');
                 break;
 
             // OES_texture_float (and WebGL 2)
-            case data.PIXEL_TYPES.FLOAT:
-                debug.ASSERT((w2 || texFloat) && resource.data instanceof Float32Array, 'The FLOAT type requires using an Float32Array, and WebGL2 or OES_texture_float.');
+            case GLConstants.FLOAT:
+                ASSERT((w2 || texFloat) && resource.data instanceof Float32Array, 'The FLOAT type requires using an Float32Array, and WebGL2 or OES_texture_float.');
                 break;
 
             // OES_texture_half_float
-            case data.PIXEL_TYPES.HALF_FLOAT_OES:
-                debug.ASSERT(texHalfFloat && (resource.data instanceof Uint16Array || resource.data instanceof Int16Array), 'The HALF_FLOAT_OES type requires using an Uint16Array or Int16Array, and OES_texture_half_float.');
+            case GLConstants.HALF_FLOAT_OES:
+                ASSERT(texHalfFloat && (resource.data instanceof Uint16Array || resource.data instanceof Int16Array), 'The HALF_FLOAT_OES type requires using an Uint16Array or Int16Array, and OES_texture_half_float.');
                 break;
 
             // WebGL 2
-            case data.PIXEL_TYPES.BYTE:
-                debug.ASSERT(w2 && resource.data instanceof Int8Array, 'The BYTE type requires using an Int8Array, and WebGL2.');
+            case GLConstants.BYTE:
+                ASSERT(w2 && resource.data instanceof Int8Array, 'The BYTE type requires using an Int8Array, and WebGL2.');
                 break;
-            case data.PIXEL_TYPES.SHORT:
-                debug.ASSERT(w2 && resource.data instanceof Int16Array, 'The SHORT type requires using an Int16Array, and WebGL2.');
+            case GLConstants.SHORT:
+                ASSERT(w2 && resource.data instanceof Int16Array, 'The SHORT type requires using an Int16Array, and WebGL2.');
                 break;
-            case data.PIXEL_TYPES.INT:
-                debug.ASSERT(w2 && resource.data instanceof Int32Array, 'The INT type requires using an Int32Array, and WebGL2.');
+            case GLConstants.INT:
+                ASSERT(w2 && resource.data instanceof Int32Array, 'The INT type requires using an Int32Array, and WebGL2.');
                 break;
-            case data.PIXEL_TYPES.HALF_FLOAT:
-                debug.ASSERT(w2 && (resource.data instanceof Uint16Array || resource.data instanceof Int16Array), 'The HALF_FLOAT type requires using a Uint16Array or Int16Array, and WebGL2.');
+            case GLConstants.HALF_FLOAT:
+                ASSERT(w2 && (resource.data instanceof Uint16Array || resource.data instanceof Int16Array), 'The HALF_FLOAT type requires using a Uint16Array or Int16Array, and WebGL2.');
                 break;
-            case data.PIXEL_TYPES.UNSIGNED_INT_2_10_10_10_REV:
-                debug.ASSERT(w2 && resource.data instanceof Uint32Array, 'The UNSIGNED_INT_2_10_10_10_REV type requires using an Uint32Array, and WebGL2.');
+            case GLConstants.UNSIGNED_INT_2_10_10_10_REV:
+                ASSERT(w2 && resource.data instanceof Uint32Array, 'The UNSIGNED_INT_2_10_10_10_REV type requires using an Uint32Array, and WebGL2.');
                 break;
-            case data.PIXEL_TYPES.UNSIGNED_INT_10F_11F_11F_REV:
-                debug.ASSERT(w2 && resource.data instanceof Uint32Array, 'The UNSIGNED_INT_10F_11F_11F_REV type requires using an Uint32Array, and WebGL2.');
+            case GLConstants.UNSIGNED_INT_10F_11F_11F_REV:
+                ASSERT(w2 && resource.data instanceof Uint32Array, 'The UNSIGNED_INT_10F_11F_11F_REV type requires using an Uint32Array, and WebGL2.');
                 break;
-            case data.PIXEL_TYPES.UNSIGNED_INT_5_9_9_9_REV:
-                debug.ASSERT(w2 && resource.data instanceof Uint32Array, 'The UNSIGNED_INT_5_9_9_9_REV type requires using an Uint32Array, and WebGL2.');
+            case GLConstants.UNSIGNED_INT_5_9_9_9_REV:
+                ASSERT(w2 && resource.data instanceof Uint32Array, 'The UNSIGNED_INT_5_9_9_9_REV type requires using an Uint32Array, and WebGL2.');
                 break;
-            case data.PIXEL_TYPES.FLOAT_32_UNSIGNED_INT_24_8_REV:
-                debug.ASSERT(w2 && resource.data instanceof Float32Array, 'The FLOAT_32_UNSIGNED_INT_24_8_REV type requires using an Float32Array, and WebGL2.');
+            case GLConstants.FLOAT_32_UNSIGNED_INT_24_8_REV:
+                ASSERT(w2 && resource.data instanceof Float32Array, 'The FLOAT_32_UNSIGNED_INT_24_8_REV type requires using an Float32Array, and WebGL2.');
                 break;
         }
     }

@@ -1,5 +1,5 @@
 import Signal from 'mini-signals';
-import { components } from '@pixi/core';
+import { UpdateComponent, DestroyComponent, UidComponent } from '@pixi/components';
 
 /**
  * @class
@@ -7,9 +7,9 @@ import { components } from '@pixi/core';
  * @memberof texture
  */
 export default class TextureResource extends
-    components.UpdateComponent(
-    components.DestroyComponent(
-    components.UidComponent(
+    UpdateComponent(
+    DestroyComponent(
+    UidComponent(
     )))
 {
     /**

@@ -1,4 +1,8 @@
-import { data as coreData /* @ifdef DEBUG */, debug /* @endif */ } from '@pixi/core';
+import { DEVICE_SUPPORT } from '@pixi/data';
+
+// @ifdef DEBUG
+import { ASSERT } from '@pixi/debug';
+// @endif
 
 import TextureResource from './TextureResource';
 import BufferResource from './BufferResource';
@@ -13,7 +17,7 @@ const rgxSVG = /^[^?#]+(\.(?:svg))/i;
 export default function createResource(source, options)
 {
     // @ifdef DEBUG
-    debug.ASSERT(!!source, `Cannot create a resource from an empty source.`, source);
+    ASSERT(!!source, `Cannot create a resource from an empty source.`, source);
     // @endif
 
     // If this is already a resource, do nothing.
@@ -52,7 +56,7 @@ export default function createResource(source, options)
     }
 
     // Image element
-    if (coreData.DEVICE_SUPPORT.IMAGE_BITMAP && source instanceof ImageBitmap)
+    if (DEVICE_SUPPORT.IMAGE_BITMAP && source instanceof ImageBitmap)
     {
         return new ImageResource(source, options);
     }

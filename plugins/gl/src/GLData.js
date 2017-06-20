@@ -42,8 +42,8 @@ export const GL_SIZE_MAP = {
     [GLConstants.FLOAT_MAT4]:       16,
 
     [GLConstants.SAMPLER_2D]:       1,
-    [GLConstants.SAMPLER_2D_ARRAY]: 1,
     [GLConstants.SAMPLER_CUBE]:     1,
+    [GLConstants.SAMPLER_2D_ARRAY]: 1,
 };
 
 /**
@@ -73,8 +73,8 @@ export const GL_SETTER = {
     [GLConstants.FLOAT_MAT4]:       (gl, loc, value) => gl.uniformMatrix4fv(loc, false, value),
 
     [GLConstants.SAMPLER_2D]:       (gl, loc, value) => gl.uniform1i(loc, value),
-    [GLConstants.SAMPLER_2D_ARRAY]: (gl, loc, value) => gl.uniform1i(loc, value),
     [GLConstants.SAMPLER_CUBE]:     (gl, loc, value) => gl.uniform1i(loc, value),
+    [GLConstants.SAMPLER_2D_ARRAY]: (gl, loc, value) => gl.uniform1i(loc, value),
 };
 
 /**
@@ -104,8 +104,8 @@ export const GL_ARRAY_SETTER = {
     [GLConstants.FLOAT_MAT4]:       (gl, loc, value) => gl.uniformMatrix4fv(loc, false, value),
 
     [GLConstants.SAMPLER_2D]:       (gl, loc, value) => gl.uniform1iv(loc, value),
-    [GLConstants.SAMPLER_2D_ARRAY]: (gl, loc, value) => gl.uniform1iv(loc, value),
     [GLConstants.SAMPLER_CUBE]:     (gl, loc, value) => gl.uniform1iv(loc, value),
+    [GLConstants.SAMPLER_2D_ARRAY]: (gl, loc, value) => gl.uniform1iv(loc, value),
 };
 
 /**
@@ -122,7 +122,7 @@ export function getUniformDefault(uniformData)
     switch (uniformData.type)
     {
         case GLConstants.FLOAT:
-            return 0;
+            return size === 1 ? 0 : new Float32Array(size);
 
         case GLConstants.FLOAT_VEC2:
             return new Float32Array(2 * size);
@@ -134,9 +134,7 @@ export function getUniformDefault(uniformData)
             return new Float32Array(4 * size);
 
         case GLConstants.INT:
-        case GLConstants.SAMPLER_2D:
-        case GLConstants.SAMPLER_2D_ARRAY:
-            return 0;
+            return size === 1 ? 0 : new Int32Array(size);
 
         case GLConstants.INT_VEC2:
             return new Int32Array(2 * size);
@@ -148,16 +146,16 @@ export function getUniformDefault(uniformData)
             return new Int32Array(4 * size);
 
         case GLConstants.BOOL:
-            return false;
+            return size === 1 ? false : createArray(size, false);
 
         case GLConstants.BOOL_VEC2:
-            return booleanArray(2 * size);
+            return createArray(2 * size, false);
 
         case GLConstants.BOOL_VEC3:
-            return booleanArray(3 * size);
+            return createArray(3 * size, false);
 
         case GLConstants.BOOL_VEC4:
-            return booleanArray(4 * size);
+            return createArray(4 * size, false);
 
         case GLConstants.FLOAT_MAT2:
             return new Float32Array([1, 0,
@@ -173,6 +171,11 @@ export function getUniformDefault(uniformData)
                                      0, 1, 0, 0,
                                      0, 0, 1, 0,
                                      0, 0, 0, 1]);
+
+        case GLConstants.SAMPLER_2D:
+        case GLConstants.SAMPLER_CUBE:
+        case GLConstants.SAMPLER_2D_ARRAY:
+            return size === 1 ? 0 : createArray(size, 0);
     }
 
     // @ifdef DEBUG
@@ -182,13 +185,13 @@ export function getUniformDefault(uniformData)
     return 0;
 }
 
-function booleanArray(size)
+function createArray(size, value)
 {
     const array = new Array(size);
 
     for (let i = 0; i < array.length; ++i)
     {
-        array[i] = false;
+        array[i] = value;
     }
 
     return array;

@@ -259,6 +259,9 @@ export default class TextureSystem extends WebGLSystem
         {
             if(texture.resource)
             {
+                // TODO (cengler): uploadable was only false for BufferResource.
+                // instead just check `isDataResource` which is true for array buffers.
+                // Also, change `resource.source` -> `resource.data`.
                 if(texture.resource.uploadable)
                 {
                     glTexture.upload(texture.resource.source);

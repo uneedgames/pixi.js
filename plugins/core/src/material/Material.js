@@ -1,4 +1,4 @@
-import { GL_SIZE_MAP } from '@pixi/gl';
+import { GL_SIZE_MAP, GLConstants } from '@pixi/gl';
 import { UidComponent } from '@pixi/components';
 
 // @ifdef DEBUG
@@ -22,12 +22,6 @@ export default class Material extends UidComponent()
         super();
 
         /**
-         * This can hint to the renderer if it is able to batch this material
-         * with other adjacent materials.
-         */
-        // this.canBeBatched = false;
-
-        /**
          * The underlying shader program.
          *
          * @member {Program}
@@ -40,29 +34,51 @@ export default class Material extends UidComponent()
          *
          * @member {Object}
          */
-        this.uniforms = this._createUniformAccessObject();
+        this.uniforms = null;
 
         /**
-         * The functions that need to run to sync the uniform values to the GPU.
+         * We need ot bind the textures used for our texture uniforms when uploading,
+         * so we cache which uniforms are textures and bind each when we are syncing.
          *
          * @private
-         * @member {Program.UniformData[]}
+         * @member {UniformData[]}
+         */
+        this._textureUniforms = [];
+
+        /**
+         * The uniforms that have been changed and need their values uploaded to the GPU.
+         *
+         * @private
+         * @member {UniformData[]}
          */
         this._pendingUniformUploads = [];
+
+        // creates the uniform access object and prepares the textureUniforms cache array.
+        this._parseUniformData();
     }
 
     /**
      * Uploads uniforms to the GPU.
      *
-     * @param {WebGLRenderingContext} gl The rendering context to use.
+     * @param {Renderer} renderer The renderer to upload to.
      */
-    uploadUniforms(gl)
+    syncUniforms(renderer)
     {
+        // bind textures
+        for (let i = 0; i < this._textureUniforms.length; ++i)
+        {
+            const uniformData = this._textureUniforms[i];
+
+            // TODO (cengler): Is material supposed to know about the texture manager?
+            renderer.texture.bind(uniformData.value, uniformData.textureSlot);
+        }
+
+        // upload changed values
         for (let i = 0; i < this._pendingUniformUploads.length; ++i)
         {
             const uniformData = this._pendingUniformUploads[i];
 
-            uniformData.upload(gl, uniformData.location, uniformData.value);
+            uniformData.upload(renderer.gl);
         }
     }
 
@@ -72,7 +88,7 @@ export default class Material extends UidComponent()
      * @private
      * @return {object} uniform access object.
      */
-    _createUniformAccessObject()
+    _parseUniformData()
     {
         // this is the object we will be sending back.
         // an object hierachy will be created for structs
@@ -88,6 +104,11 @@ export default class Material extends UidComponent()
 
             const uniformGroup = getUniformGroup(nameTokens, uniforms);
             const uniformData = this.program.uniformData[fullName];
+
+            if (uniformData.isTexture)
+            {
+                this._textureUniforms.push(uniformData);
+            }
 
             Reflect.defineProperty(uniformGroup, name, {
                 enumerable: true,
@@ -117,23 +138,130 @@ function getUniformGroup(nameTokens, uniform)
 
 function getUniformSetter(uniformData)
 {
-     GL_SIZE_MAP[uniformData.type] === 1
-    ? (value) =>
+    const type = uniformData.type;
+    const typeSize = GL_SIZE_MAP[type];
+
+    // For textures and array uniforms we don't perform any caching.
+    if (uniformData.isTexture || uniformData.size > 1)
     {
-        if (uniformData.value !== value)
+        return (value) =>
         {
+            // @ifdef DEBUG
+            /* eslint-disable max-len */
+            ASSERT(typeof value === typeof uniformData.value, 'Attempt to set invalid value to a uniform, types do not match.');
+            ASSERT(value.constructor === uniformData.value.constructor, 'Attempt to set invalid value to a uniform, types do not match.');
+
+            if (typeSize > 1 || uniformData.size > 1)
+            {
+                ASSERT(value.length === uniformData.value.length, 'Attempt to set invalid value to a uniform, array sizes do not match.');
+                ASSERT(typeof value[0] === typeof uniformData.value[0], 'Attempt to set invalid value to a uniform, array types do not match.');
+            }
+            /* eslint-enable max-len */
+            // @endif
+
             uniformData.value = value;
 
             if (this._pendingUniformUploads.indexOf(uniformData))
             {
                 this._pendingUniformUploads.push(uniformData);
             }
-        }
+        };
     }
-    : (value) =>
+
+    // mat3 gets a special setter, so it can take our Matrix object as a value or any { array: number[] } object.
+    if (type === GLConstants.FLOAT_MAT3)
+    {
+        return (value) =>
+        {
+            // @ifdef DEBUG
+            /* eslint-disable max-len */
+            ASSERT((value.array || value) instanceof Float32Array, 'Attempt to set invalid value to a uniform, mat3 must be a Float32Array or Matrix object.');
+            /* eslint-enable max-len */
+            // @endif
+
+            uniformData.value = value.array || value;
+
+            if (this._pendingUniformUploads.indexOf(uniformData))
+            {
+                this._pendingUniformUploads.push(uniformData);
+            }
+        };
+    }
+
+    // vec2 gets a special setter, so it can take our Point object as a value or any { x: number, y: number } object.
+    if (type === GLConstants.FLOAT_VEC2 || type === GLConstants.INT_VEC2)
+    {
+        return (value) =>
+        {
+            // @ifdef DEBUG
+            /* eslint-disable max-len */
+            ASSERT((value.array || value) instanceof Float32Array, 'Attempt to set invalid value to a uniform, mat3 must be a Float32Array or Matrix object.');
+            /* eslint-enable max-len */
+            // @endif
+
+            let different = false;
+
+            if (value.x !== undefined)
+            {
+                if (uniformData.value[0] !== value.x || uniformData.value[1] !== value.y)
+                {
+                    different = true;
+                    uniformData.value[0] = value.x;
+                    uniformData.value[1] = value.y;
+                }
+            }
+            else if (uniformData.value[0] !== value[0] || uniformData.value[1] !== value[1])
+            {
+                different = true;
+                uniformData.value[0] = value[0];
+                uniformData.value[1] = value[1];
+            }
+
+            if (different)
+            {
+                if (this._pendingUniformUploads.indexOf(uniformData))
+                {
+                    this._pendingUniformUploads.push(uniformData);
+                }
+            }
+        };
+    }
+
+    // For single-value types we just check and set the value (float, int, etc).
+    if (typeSize === 1)
+    {
+        return (value) =>
+        {
+            // @ifdef DEBUG
+            /* eslint-disable max-len */
+            ASSERT(typeof value === typeof uniformData.value, 'Attempt to set invalid value to a uniform, types do not match.');
+            ASSERT(value.constructor === uniformData.value.constructor, 'Attempt to set invalid value to a uniform, types do not match.');
+            /* eslint-enable max-len */
+            // @endif
+
+            if (uniformData.value !== value)
+            {
+                uniformData.value = value;
+
+                if (this._pendingUniformUploads.indexOf(uniformData))
+                {
+                    this._pendingUniformUploads.push(uniformData);
+                }
+            }
+        };
+    }
+
+    // For non-array uniforms with array types we check if the array values are the same,
+    // and if not we copy the values in.
+    return (value) =>
     {
         // @ifdef DEBUG
-        ASSERT(uniformData.value.length === value.length, 'Attempt to set invalid value to a uniform, array sizes do not match.');
+        /* eslint-disable max-len */
+        ASSERT(typeof value === typeof uniformData.value, 'Attempt to set invalid value to a uniform, types do not match.');
+        ASSERT(value.constructor === uniformData.value.constructor, 'Attempt to set invalid value to a uniform, types do not match.');
+        ASSERT(value.length === uniformData.value.length, 'Attempt to set invalid value to a uniform, array sizes do not match.');
+        ASSERT(typeof value[0] === typeof uniformData.value[0], 'Attempt to set invalid value to a uniform, array types do not match.');
+        /* eslint-enable max-len */
         // @endif
 
         let different = false;
@@ -142,19 +270,17 @@ function getUniformSetter(uniformData)
         {
             if (uniformData.value[i] !== value[i])
             {
+                uniformData.value[i] = value[i];
                 different = true;
-                break;
             }
         }
 
         if (different)
         {
-            uniformData.value = value;
-
             if (this._pendingUniformUploads.indexOf(uniformData))
             {
                 this._pendingUniformUploads.push(uniformData);
             }
         }
-    },
+    };
 }
