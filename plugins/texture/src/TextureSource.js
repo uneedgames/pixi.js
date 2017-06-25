@@ -19,6 +19,8 @@ import { ASSERT } from '@pixi/debug';
  * @mixes UpdateComponent
  * @mixes DestroyComponent
  * @mixes UidComponent
+ * @implements {gl.GLTexture.GLTextureUploadOptions}
+ * @implements {gl.GLTexture.GLTextureSetupOptions}
  * @memberof texture
  */
 export default class TextureSource extends
@@ -81,25 +83,54 @@ export default class TextureSource extends
         this.resolution = resolution;
 
         /**
-         * The scale mode to apply when scaling this texture
+         * The texture minifying function is used whenever the pixel being textured
+         * maps to an area greater than one texture element.
          *
-         * @member {number}
+         * @member {GLenum}
          * @see GLConstants
+         * @see https://www.khronos.org/registry/OpenGL-Refpages/es2.0/xhtml/glTexParameter.xml#description
          */
+        this.minFilter = scaleMode;
+
+        /**
+         * The texture magnification function is used when the pixel being textured
+         * maps to an area less than or equal to one texture element.
+         *
+         * @member {GLenum}
+         * @see GLConstants
+         * @see https://www.khronos.org/registry/OpenGL-Refpages/es2.0/xhtml/glTexParameter.xml#description
+         */
+        this.magFilter = scaleMode;
+
+        // run the scaleMode setter so that magFilter is set correctly.
         this.scaleMode = scaleMode;
 
         /**
-         * The texture wrapping mode of the texture.
+         * The texture wrapping mode for S (U/X) coordinates.
          *
-         * @type {number}
+         * Setting {@link wrapMode} will set both `wrapS` and `wrapT` to the same value.
+         *
+         * @type {GLenum}
          * @see GLConstants
+         * @see https://www.khronos.org/registry/OpenGL-Refpages/es2.0/xhtml/glTexParameter.xml#description
          */
-        this.wrapMode = wrapMode;
+        this.wrapS = wrapMode;
+
+        /**
+         * The texture wrapping mode for T (V/Y) coordinates.
+         *
+         * Setting {@link wrapMode} will set both `wrapS` and `wrapT` to the same value.
+         *
+         * @type {GLenum}
+         * @see GLConstants
+         * @see https://www.khronos.org/registry/OpenGL-Refpages/es2.0/xhtml/glTexParameter.xml#description
+         */
+        this.wrapT = wrapMode;
 
         /**
          * The pixel format of the texture.
          *
-         * @member {number}
+         * @member {GLenum}
          * @see GLConstants
          */
         this.format = format;
@@ -107,7 +138,7 @@ export default class TextureSource extends
         /**
          * The data type of the texture.
          *
-         * @member {number}
+         * @member {GLenum}
          * @see GLConstants
          */
         this.type = type;
@@ -115,7 +146,7 @@ export default class TextureSource extends
         /**
          * The texture target type of the texture.
          *
-         * @member {number}
+         * @member {GLenum}
          * @see GLConstants
          */
         this.target = target;
@@ -133,6 +164,14 @@ export default class TextureSource extends
          * @member {boolean}
          */
         this.premultiplyAlpha = premultiplyAlpha;
+
+        /**
+         * The mipmap level to use for texture uploads of this texture source.
+         * You probably never need to set this.
+         *
+         * @member {number}
+         */
+        this.level = 0;
 
         /**
          * Dispatched when a not-immediately-available source finishes loading.
@@ -237,6 +276,76 @@ export default class TextureSource extends
         else
         {
             this._resource.onReady.once(this._onResourceReady, this);
+        }
+    }
+
+    /**
+     * The wrapMode to use for ST (UV/XY) coordinates. This sets both
+     * `wrapS` and `wrapT` to this value.
+     *
+     * @member {number}
+     */
+    get wrapMode() { return this.wrapS; }
+
+    set wrapMode(v) // eslint-disable-line require-jsdoc
+    {
+        // @ifdef DEBUG
+        ASSERT([
+            GLConstants.REPEAT,
+            GLConstants.CLAMP_TO_EDGE,
+            GLConstants.MIRRORED_REPEAT,
+        ].indexOf(v) !== -1, 'Invalid wrapMode.', v);
+        // @endif
+
+        this.wrapS = v;
+        this.wrapT = v;
+    }
+
+    /**
+     * The scaleMode to use when scaling the texture. This sets both
+     * `minFilter` and `magFilter` to this value.
+     *
+     * If set to use one of the mipmap filters, a suitable mag filter will be
+     * deduced based on the value chosen. Here is a table of how the mipmap
+     * filters map to a mag filter:
+     *
+     * | filter mode                    | mapped mag filter     |
+     * | ------------------------------ | --------------------- |
+     * | NEAREST_MIPMAP_NEAREST         | NEAREST               |
+     * | LINEAR_MIPMAP_NEAREST          | NEAREST               |
+     * | NEAREST_MIPMAP_LINEAR          | LINEAR                |
+     * | LINEAR_MIPMAP_LINEAR           | LINEAR                |
+     *
+     * @member {number}
+     */
+    get scaleMode() { return this.wrapS; }
+
+    set scaleMode(v) // eslint-disable-line require-jsdoc
+    {
+        // @ifdef DEBUG
+        ASSERT([
+            GLConstants.NEAREST,
+            GLConstants.LINEAR,
+            GLConstants.NEAREST_MIPMAP_NEAREST,
+            GLConstants.LINEAR_MIPMAP_NEAREST,
+            GLConstants.NEAREST_MIPMAP_LINEAR,
+            GLConstants.LINEAR_MIPMAP_LINEAR,
+        ].indexOf(v) !== -1, 'Invalid scaleMode.', v);
+        // @endif
+
+        this.minFilter = v;
+
+        if (v === GLConstants.NEAREST_MIPMAP_NEAREST || v === GLConstants.LINEAR_MIPMAP_NEAREST)
+        {
+            this.magFilter = GLConstants.NEAREST;
+        }
+        else if (v === GLConstants.NEAREST_MIPMAP_LINEAR || v === GLConstants.LINEAR_MIPMAP_LINEAR)
+        {
+            this.magFilter = GLConstants.LINEAR;
+        }
+        else
+        {
+            this.magFilter = v;
         }
     }
 
@@ -413,12 +522,12 @@ function validateTextureSourceParams(resource, { scaleMode, wrapMode, format, ty
         GLConstants.LINEAR_MIPMAP_NEAREST,
         GLConstants.NEAREST_MIPMAP_LINEAR,
         GLConstants.LINEAR_MIPMAP_LINEAR,
-    ].indexOf(scaleMode) !== -1, `Invalid scaleMode.`, scaleMode);
+    ].indexOf(scaleMode) !== -1, 'Invalid scaleMode.', scaleMode);
     ASSERT([
         GLConstants.REPEAT,
         GLConstants.CLAMP_TO_EDGE,
         GLConstants.MIRRORED_REPEAT,
-    ].indexOf(wrapMode) !== -1, `Invalid wrapMode.`, wrapMode);
+    ].indexOf(wrapMode) !== -1, 'Invalid wrapMode.', wrapMode);
     ASSERT([
         GLConstants.DEPTH_COMPONENT,
         GLConstants.ALPHA,
@@ -427,7 +536,7 @@ function validateTextureSourceParams(resource, { scaleMode, wrapMode, format, ty
         GLConstants.LUMINANCE,
         GLConstants.LUMINANCE_ALPHA,
         GLConstants.DEPTH_STENCIL,
-    ].indexOf(format) !== -1, `Invalid format.`, format);
+    ].indexOf(format) !== -1, 'Invalid format.', format);
     ASSERT([
         GLConstants.BYTE,
         GLConstants.UNSIGNED_BYTE,
@@ -448,7 +557,7 @@ function validateTextureSourceParams(resource, { scaleMode, wrapMode, format, ty
         GLConstants.RG,
         GLConstants.RG_INTEGER,
         GLConstants.INT_2_10_10_10_REV,
-    ].indexOf(type) !== -1, `Invalid type.`, type);
+    ].indexOf(type) !== -1, 'Invalid type.', type);
     ASSERT([
         GLConstants.TEXTURE_2D,
         GLConstants.TEXTURE_2D_ARRAY,
@@ -460,9 +569,9 @@ function validateTextureSourceParams(resource, { scaleMode, wrapMode, format, ty
         GLConstants.TEXTURE_CUBE_MAP_NEGATIVE_Y,
         GLConstants.TEXTURE_CUBE_MAP_POSITIVE_Z,
         GLConstants.TEXTURE_CUBE_MAP_NEGATIVE_Z,
-    ].indexOf(target) !== -1, `Invalid type.`, target);
-    ASSERT(typeof mipmap === 'boolean', `Invalid mipmap value.`, mipmap);
-    ASSERT(typeof premultiplyAlpha === 'boolean', `Invalid premultiplyAlpha value.`, premultiplyAlpha);
+    ].indexOf(target) !== -1, 'Invalid type.', target);
+    ASSERT(typeof mipmap === 'boolean', 'Invalid mipmap value.', mipmap);
+    ASSERT(typeof premultiplyAlpha === 'boolean', 'Invalid premultiplyAlpha value.', premultiplyAlpha);
 
     // Ensure the targets have valid resource data
     if (target === GLConstants.TEXTURE_2D_ARRAY)

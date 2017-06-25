@@ -4,10 +4,8 @@ import { ASSERT } from '../debug';
 let FLOATING_POINT_AVAILABLE = false;
 // @endif
 
-let lastBoundTextureId = 0;
-
 /**
- * Helper class to create a WebGL texture.
+ * Lightweight class to create and manage a WebGL Texture.
  *
  * @class
  * @memberof gl
@@ -15,13 +13,9 @@ let lastBoundTextureId = 0;
 export default class GLTexture
 {
     /**
-     * @param {WebGLRenderingContext} gl - The current WebGL context.
-     * @param {number} width - The width of the texture.
-     * @param {number} height - The height of the texture.
-     * @param {number} format - The pixel format of the texture.
-     * @param {number} type - The gl type of the texture.
+     * @param {WebGLRenderingContext} gl The WebGL context.
      */
-    constructor(gl, width = 0, height = 0, format = gl.RGBA, type = gl.UNSIGNED_BYTE)
+    constructor(gl)
     {
         /**
          * The current WebGL rendering context
@@ -36,63 +30,19 @@ export default class GLTexture
          * @member {WebGLTexture}
          */
         this.texture = gl.createTexture();
-
-        /**
-         * If mipmapping was used for this texture, enable and disable with enableMipmap()
-         *
-         * @member {boolean}
-         */
-        this.mipmap = false;
-
-        /**
-         * Set to true to enable pre-multiplied alpha
-         *
-         * @member {boolean}
-         */
-        this.premultiplyAlpha = false;
-
-        /**
-         * The width of texture
-         *
-         * @member {number}
-         */
-        this.width = width;
-
-        /**
-         * The height of texture
-         *
-         * @member {number}
-         */
-        this.height = height;
-
-        /**
-         * The pixel format of the texture. defaults to gl.RGBA
-         *
-         * @member {number}
-         */
-        this.format = format;
-
-        /**
-         * The gl type of the texture. defaults to gl.UNSIGNED_BYTE
-         *
-         * @member {number}
-         */
-        this.type = type;
     }
 
     /**
      * @static
      * @param {WebGLRenderingContext} gl - The current WebGL context
      * @param {HTMLImageElement|ImageData} source - the source image of the texture
-     * @param {boolean} premultiplyAlpha - If we want to use pre-multiplied alpha
      * @return {GLTexture} The new texture.
      */
-    static fromSource(gl, source, premultiplyAlpha = false)
+    static fromSource(gl, source, options)
     {
         const texture = new GLTexture(gl);
 
-        texture.premultiplyAlpha = premultiplyAlpha;
-        texture.upload(source);
+        texture.upload(source, options);
 
         return texture;
     }
@@ -118,61 +68,74 @@ export default class GLTexture
      * Uploads this texture to the GPU
      *
      * @param {HTMLImageElement|ImageData|HTMLVideoElement} source - the source image of the texture
+     * @param {GLTextureUploadOptions} options The options for the upload
      */
-    upload(source)
+    upload(source, options)
     {
-        this.bind();
-
-        // if the source is a video, we need to use the videoWidth / videoHeight as width / height will be incorrect.
-        this.width = source.videoWidth || source.width;
-        this.height = source.videoHeight || source.height;
-
         const gl = this.gl;
 
-        gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, this.premultiplyAlpha);
-        gl.texImage2D(gl.TEXTURE_2D, 0, this.format, this.format, this.type, source);
+        // @ifdef DEBUG
+        ASSERT(options.target, 'Options `target` property is required for image/video uploads.');
+        ASSERT(options.format, 'Options `format` property is required for image/video uploads.');
+        ASSERT(options.type, 'Options `format` property is required for image/video uploads.');
+        // @endif
+
+        gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, options.premultiplyAlpha || false);
+
+        // Always use texImage2D, which seems faster or the same if you are doing the entire texture.
+        // - https://jsperf.com/webgl-teximage2d-vs-texsubimage2d/38
+        // glTexSubImage2D used to be faster in chrome before this bug fix:
+        // - https://bugs.chromium.org/p/angleproject/issues/detail?id=166
+        // And this is super important for video textures to work correctly:
+        // - http://codeflow.org/issues/slow_video_to_texture/
+        //
+        // | upload method  | resolution    | frame/s   | upload time (ms)  |
+        // | :------------- | :------------ | :-------- | :---------------- |
+        // | texImage2D     | 720p          | 60.07     | 0.41              |
+        // | texImage2D     | 1080p         | 60.02     | 0.41              |
+        // | texSubImage2D  | 720p          | 59.91     | 4.23              |
+        // | texSubImage2D  | 1080p         | 59.20     | 10.02             |
+        //
+        gl.texImage2D(
+            options.target,
+            options.level || 0,
+            options.format,
+            options.format,
+            options.type,
+            source
+        );
     }
 
     /**
      * Use a data source and uploads this texture to the GPU
      *
-     * @param {ArrayBuffer|SharedArrayBuffer|ArrayBufferView} data - the data to upload to the texture
-     * @param {number} width - the new width of the texture
-     * @param {number} height - the new height of the texture
+     * @param {ArrayBuffer|SharedArrayBuffer|ArrayBufferView} data The data to upload to the texture
+     * @param {GLTextureUploadOptions} options The options for the upload
      */
-    uploadData(data, width, height)
+    uploadData(data, options)
     {
-        this.bind();
-
         const gl = this.gl;
 
-        this.width = width || this.width;
-        this.height = height || this.height;
+        // @ifdef DEBUG
+        ASSERT(options.target, 'Options `target` property is required for data uploads.');
+        ASSERT(options.format, 'Options `format` property is required for data uploads.');
+        ASSERT(options.type, 'Options `format` property is required for data uploads.');
+        ASSERT(typeof options.width === 'number' && options.width > -1, 'Options `width` property is required for data uploads.');
+        ASSERT(typeof options.height === 'number' && options.height > -1, 'Options `height` property is required for data uploads.');
+        // @endif
 
-        if (data instanceof Float32Array)
-        {
-            // @ifdef DEBUG
-            if (!FLOATING_POINT_AVAILABLE)
-            {
-                const ext = gl.getExtension('OES_texture_float');
-
-                ASSERT(ext, 'GLTexture#uploadData: floating point textures not available.');
-
-                FLOATING_POINT_AVAILABLE = !!ext;
-            }
-            // @endif
-
-            this.type = gl.FLOAT;
-        }
-        else
-        {
-            // TODO support for other types
-            this.type = gl.UNSIGNED_BYTE;
-        }
-
-        // what type of data?
-        gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, this.premultiplyAlpha);
-        gl.texImage2D(gl.TEXTURE_2D, 0, this.format, this.width, this.height, 0, this.format, this.type, data || null);
+        gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, options.premultiplyAlpha || false);
+        gl.texImage2D(
+            options.target,
+            options.level || 0,
+            options.format,
+            options.width,
+            options.height,
+            0,
+            options.format,
+            options.type,
+            data || null
+        );
     }
 
     /**
@@ -184,10 +147,9 @@ export default class GLTexture
     {
         const gl = this.gl;
 
-        if (location > -1 && location !== lastBoundTextureId)
+        if (location > -1)
         {
             gl.activeTexture(gl.TEXTURE0 + location);
-            lastBoundTextureId = location;
         }
 
         gl.bindTexture(gl.TEXTURE_2D, this.texture);
@@ -204,105 +166,27 @@ export default class GLTexture
     }
 
     /**
-     * @param {boolean} linear - if we want to use linear filtering or nearest neighbour interpolation
+     * Setup the texture by setting all the parameters.
+     *
+     * @param {GLTextureSetupOptions} options The options for the setup.
      */
-    minFilter(linear)
+    setup(options)
     {
         const gl = this.gl;
 
-        this.bind();
-
-        if (this.mipmap)
-        {
-            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, linear ? gl.LINEAR_MIPMAP_LINEAR : gl.NEAREST_MIPMAP_NEAREST); // eslint-disable-line max-len
-        }
-        else
-        {
-            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, linear ? gl.LINEAR : gl.NEAREST);
-        }
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, options.minFilter);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, options.magFilter);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, options.wrapS);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, options.wrapT);
     }
 
     /**
-     * @param {boolean} linear - if we want to use linear filtering or nearest neighbour interpolation
+     * Generates mipmaps for this texture.
+     *
      */
-    magFilter(linear)
+    generateMipmap()
     {
-        const gl = this.gl;
-
-        this.bind();
-
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, linear ? gl.LINEAR : gl.NEAREST);
-    }
-
-    /**
-     * Enables mipmapping
-     */
-    enableMipmap()
-    {
-        const gl = this.gl;
-
-        this.bind();
-
-        this.mipmap = true;
-
-        gl.generateMipmap(gl.TEXTURE_2D);
-    }
-
-    /**
-     * Enables linear filtering
-     */
-    enableLinearScaling()
-    {
-        this.minFilter(true);
-        this.magFilter(true);
-    }
-
-    /**
-     * Enables nearest neighbour interpolation
-     */
-    enableNearestScaling()
-    {
-        this.minFilter(false);
-        this.magFilter(false);
-    }
-
-    /**
-     * Enables clamping on the texture so WebGL will not repeat it
-     */
-    enableWrapClamp()
-    {
-        const gl = this.gl;
-
-        this.bind();
-
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-    }
-
-    /**
-     * Enable tiling on the texture
-     */
-    enableWrapRepeat()
-    {
-        const gl = this.gl;
-
-        this.bind();
-
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.REPEAT);
-    }
-
-    /**
-     * Enable wrapping on the texture
-     */
-    enableWrapMirrorRepeat()
-    {
-        const gl = this.gl;
-
-        this.bind();
-
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.MIRRORED_REPEAT);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.MIRRORED_REPEAT);
+        this.gl.generateMipmap(this.gl.TEXTURE_2D);
     }
 
     /**
@@ -319,3 +203,135 @@ export default class GLTexture
         this.texture = null;
     }
 }
+
+// //////////////////////////
+// GLTextureUploadOptions interface
+// //////////////////////////
+
+/**
+ * Upload options for a GLTexture upload.
+ *
+ * @interface GLTextureUploadOptions
+ * @memberof GLTexture
+ */
+
+/**
+ * The width of the texture to upload.
+ *
+ * @memberof GLTextureUploadOptions
+ * @name width
+ * @type {number}
+ * @see GLConstants
+ */
+
+/**
+ * The height of the texture to upload.
+ *
+ * @memberof GLTextureUploadOptions
+ * @name height
+ * @type {number}
+ * @see GLConstants
+ */
+
+/**
+ * The pixel format of the texture.
+ *
+ * @memberof GLTextureUploadOptions
+ * @name format
+ * @type {GLenum}
+ * @see GLConstants
+ */
+
+/**
+ * The data type of the texture.
+ *
+ * @memberof GLTextureUploadOptions
+ * @name type
+ * @type {GLenum}
+ * @see GLConstants
+ */
+
+/**
+ * The texture target type of the texture.
+ *
+ * @memberof GLTextureUploadOptions
+ * @name target
+ * @type {GLenum}
+ * @see GLConstants
+ */
+
+/**
+ * Set to true to enable pre-multiplied alpha.
+ *
+ * @memberof GLTextureUploadOptions
+ * @name premultiplyAlpha
+ * @type {boolean}
+ * @default false
+ */
+
+/**
+ * The mipmap level to use for this texture. Level 0 is the base image level
+ * and level n is the nth mipmap reduction level.
+ *
+ * @memberof GLTextureUploadOptions
+ * @name level
+ * @type {number}
+ * @default 0
+ */
+
+/**
+ * Only used in WebGL2 when the internal format can differ from the format.
+ * Defaults to `format` and is forced to be the same as `format` in WebGL1.
+ *
+ * @memberof GLTextureUploadOptions
+ * @name internalformat
+ * @type {GLenum}
+ * @see GLConstants
+ */
+
+// //////////////////////////
+// GLTextureSetupOptions interface
+// //////////////////////////
+
+/**
+ * Upload options for a GLTexture upload.
+ *
+ * @interface GLTextureSetupOptions
+ * @memberof GLTexture
+ */
+
+/**
+ * Texture minification filter.
+ *
+ * @memberof GLTextureSetupOptions
+ * @name minFilter
+ * @type {GLenum}
+ * @see GLConstants
+ */
+
+/**
+ * Texture magnification filter.
+ *
+ * @memberof GLTextureSetupOptions
+ * @name magFilter
+ * @type {GLenum}
+ * @see GLConstants
+ */
+
+/**
+ * Wrapping function for texture coordinate `S`.
+ *
+ * @memberof GLTextureSetupOptions
+ * @name wrapS
+ * @type {GLenum}
+ * @see GLConstants
+ */
+
+/**
+ * Wrapping function for texture coordinate `T`.
+ *
+ * @memberof GLTextureSetupOptions
+ * @name wrapT
+ * @type {GLenum}
+ * @see GLConstants
+ */
