@@ -387,7 +387,8 @@ export default class Renderer extends DestroyComponent(UidComponent(ECS))
  * @property {number} [width] The width of the screen
  * @property {number} [height] The height of the screen
  * @property {HTMLCanvasElement} [canvas] The canvas to use as a view, optional
- * @property {boolean} [transparent] If the render view is transparent, default false
+ * @property {boolean} [alpha] If the render view is transparent, default false. When set to true
+ *  the browser will composit the canvas with dom elements behind.
  * @property {boolean} [autoResize] If the render view is automatically resized, default false
  * @property {boolean} [antialias] sets antialias. If not available natively then FXAA
  *  antialiasing is used
@@ -407,6 +408,8 @@ export default class Renderer extends DestroyComponent(UidComponent(ECS))
  * @property {boolean} [legacy] If true Pixi will aim to ensure compatibility
  *  with older / less advanced devices. If you experiance unexplained flickering try setting this to true.
  * @property {boolean} [sayHello] Should this renderer log hello? Only happens once if not set explicitly.
+ * @property {string} [options.powerPreference] - Parameter passed to webgl context, set to "high-performance"
+ *  for devices with dual graphics card
  */
 
 /**

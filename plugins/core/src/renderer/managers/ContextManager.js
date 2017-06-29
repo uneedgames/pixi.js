@@ -43,13 +43,16 @@ export default class ContextManager extends Manager
             ASSERT(options.canvas instanceof HTMLCanvasElement, 'Either the `context` or `canvas` options must be set.');
             // @endif
 
-            this._initFromOptions({
-                stencil: options.stencil,
-                alpha: options.transparent,
-                antialias: options.antialias,
-                premultipliedAlpha: options.transparent && options.transparent !== 'notMultiplied',
-                preserveDrawingBuffer: options.preserveDrawingBuffer,
-            });
+            // backwards compat with old options
+            if (typeof options.transparent === 'boolean' || typeof options.transparent === 'string')
+            {
+                options.alpha = options.transparent;
+            }
+
+            options.premultipliedAlpha = options.alpha && options.alpha !== 'notMultiplied';
+            options.alpha = !!options.alpha;
+
+            this._initFromOptions(options);
         }
 
         // @ifdef DEBUG
