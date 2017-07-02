@@ -29,10 +29,10 @@ export default function UpdateComponent(Base = Object)
              * event. You can store the last ID you saw, then when your event happens check if there
              * has since been a new update ID.
              *
-             * @member {number}
              * @readonly
+             * @member {number}
              */
-            this.updateID = 0;
+            this.updateID = 1;
         }
 
         /**

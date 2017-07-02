@@ -1,4 +1,4 @@
-import UpdateComponent from '../components/UpdateComponent';
+import { UpdateComponent } from '@pixi/components';
 
 /**
  * The Point object represents a location in a two-dimensional coordinate system, where x represents

@@ -1,4 +1,5 @@
-import { math } from '@fae/core';
+import { math } from '@pixi/core';
+import { UpdateComponent } from '@pixi/components';
 
 /* @ifdef DEBUG */
 import { ASSERT } from '@pixi/debug';
@@ -10,7 +11,7 @@ import { ASSERT } from '@pixi/debug';
  * @class
  * @memberof transform
  */
-export default class Transform
+export default class Transform extends UpdateComponent()
 {
     /**
      * Constructs a new Transform object.
@@ -18,6 +19,8 @@ export default class Transform
      */
     constructor()
     {
+        super();
+
         /**
          * The parent transform to update against.
          *
@@ -32,7 +35,7 @@ export default class Transform
          * @private
          * @member {Matrix2d}
          */
-        this._wt = new math.Matrix2d();
+        this._wt = new math.Matrix();
 
         /**
          * The local matrix transform.
@@ -40,7 +43,7 @@ export default class Transform
          * @private
          * @member {Matrix2d}
          */
-        this._lt = new math.Matrix2d();
+        this._lt = new math.Matrix();
 
         /**
          * Position component of transform.
@@ -48,7 +51,7 @@ export default class Transform
          * @private
          * @member {Vector2d}
          */
-        this._position = new math.Vector2d();
+        this._position = new math.Point();
 
         /**
          * Scale component of transform.
@@ -56,7 +59,7 @@ export default class Transform
          * @private
          * @member {Vector2d}
          */
-        this._scale = new math.Vector2d(1, 1);
+        this._scale = new math.Point(1, 1);
 
         /**
          * Skew component of transform.
@@ -64,7 +67,7 @@ export default class Transform
          * @private
          * @member {Vector2d}
          */
-        this._skew = new math.Vector2d();
+        this._skew = new math.Point();
 
         /**
          * Pivot component of transform.
@@ -72,7 +75,7 @@ export default class Transform
          * @private
          * @member {Vector2d}
          */
-        this._pivot = new math.Vector2d();
+        this._pivot = new math.Point();
 
         /**
          * Rotation component of transform.
@@ -82,19 +85,17 @@ export default class Transform
          */
         this._rotation = 0;
 
-        // dirty trackers when updates are made to matrices
-        this._localUpdateId = 0;
-        this._worldUpdateId = 0;
-        this._cachedLocalUpdateId = -1;
-        this._cachedWorldUpdateId = -1;
+        // Track the last update ID we had, and what we saw from the parent transform.
+        this._lastUpdateID = 0;
+        this._lastParentUpdateID = 0;
 
         // cache vars for expensive trig functions
         this._sr = Math.sin(0);
         this._cr = Math.cos(0);
-        this._cy = Math.cos(0); // skewY
-        this._sy = Math.sin(0); // skewY
         this._sx = Math.sin(0); // skewX
         this._cx = Math.cos(0); // skewX
+        this._cy = Math.cos(0); // skewY
+        this._sy = Math.sin(0); // skewY
     }
 
     /**
@@ -135,7 +136,7 @@ export default class Transform
     set x(v)
     {
         this._position.x = v;
-        this._localUpdateId++;
+        this.update();
     }
 
     /**
@@ -156,7 +157,7 @@ export default class Transform
     set y(v)
     {
         this._position.y = v;
-        this._localUpdateId++;
+        this.update();
     }
 
     /**
@@ -177,7 +178,7 @@ export default class Transform
     set scaleX(v)
     {
         this._scale.x = v;
-        this._localUpdateId++;
+        this.update();
     }
 
     /**
@@ -198,7 +199,7 @@ export default class Transform
     set scaleY(v)
     {
         this._scale.y = v;
-        this._localUpdateId++;
+        this.update();
     }
 
     /**
@@ -221,7 +222,7 @@ export default class Transform
         this._skew.x = v;
         this._sx = Math.sin(v);
         this._cx = Math.cos(v);
-        this._localUpdateId++;
+        this.update();
     }
 
     /**
@@ -244,7 +245,7 @@ export default class Transform
         this._skew.y = v;
         this._cy = Math.cos(v);
         this._sy = Math.sin(v);
-        this._localUpdateId++;
+        this.update();
     }
 
     /**
@@ -265,7 +266,7 @@ export default class Transform
     set pivotX(v)
     {
         this._pivot.x = v;
-        this._localUpdateId++;
+        this.update();
     }
 
     /**
@@ -286,7 +287,7 @@ export default class Transform
     set pivotY(v)
     {
         this._pivot.y = v;
-        this._localUpdateId++;
+        this.update();
     }
 
     /**
@@ -309,7 +310,7 @@ export default class Transform
         this._rotation = v;
         this._sr = Math.sin(v);
         this._cr = Math.cos(v);
-        this._localUpdateId++;
+        this.update();
     }
 
     /**
@@ -318,7 +319,8 @@ export default class Transform
      */
     invalidate()
     {
-        this._cachedWorldUpdateId = -1;
+        this._lastUpdateID = 0;
+        this._lastParentUpdateID = 0;
     }
 
     /**
@@ -332,7 +334,7 @@ export default class Transform
         const wt = this._wt;
         const lt = this._lt;
 
-        if (this._localUpdateId !== this._cachedLocalUpdateId)
+        if (this._lastUpdateID !== this.updateID)
         {
             const a =  this._cr * this._scale.x;
             const b =  this._sr * this._scale.x;
@@ -340,50 +342,45 @@ export default class Transform
             const d =  this._cr * this._scale.y;
 
             // skew
-            lt.a = (this._cy * a) + (this._sy * c);
-            lt.b = (this._cy * b) + (this._sy * d);
-            lt.c = (this._sx * a) + (this._cx * c);
-            lt.d = (this._sx * b) + (this._cx * d);
+            lt[0] = (this._cy * a) + (this._sy * c);
+            lt[1] = (this._cy * b) + (this._sy * d);
+            lt[3] = (this._sx * a) + (this._cx * c);
+            lt[4] = (this._sx * b) + (this._cx * d);
 
             // translation
-            lt.tx = this._position.x - ((this._pivot.x * lt.a) + (this._pivot.y * lt.c));
-            lt.ty = this._position.y - ((this._pivot.x * lt.b) + (this._pivot.y * lt.d));
+            lt[6] = this._position.x - ((this._pivot.x * lt[0]) + (this._pivot.y * lt[3]));
+            lt[7] = this._position.y - ((this._pivot.x * lt[1]) + (this._pivot.y * lt[4]));
 
-            this._cachedLocalUpdateId = this._localUpdateId;
-            this._cachedWorldUpdateId = -1;
-        }
+            this._lastUpdateID = this.updateID;
+            this._lastParentUpdateID = 0;
 
-        // @ifdef DEBUG
-        ASSERT(this._lt.valid(), 'Invalid local transform, property is set incorrectly somewhere...');
-        // @endif
-
-        if (this.parent)
-        {
-            if (this._cachedWorldUpdateId !== this.parent._worldUpdateId)
+            if (!this.parent)
             {
-                const pt = this.parent._wt;
-
-                // multiply the parent matrix with the objects transform.
-                wt.a = (lt.a * pt.a) + (lt.b * pt.c);
-                wt.b = (lt.a * pt.b) + (lt.b * pt.d);
-                wt.c = (lt.c * pt.a) + (lt.d * pt.c);
-                wt.d = (lt.c * pt.b) + (lt.d * pt.d);
-                wt.tx = (lt.tx * pt.a) + (lt.ty * pt.c) + pt.tx;
-                wt.ty = (lt.tx * pt.b) + (lt.ty * pt.d) + pt.ty;
-
-                this._cachedWorldUpdateId = this.parent._worldUpdateId;
-                this._worldUpdateId++;
+                wt.copy(lt);
             }
         }
-        else if (this._cachedWorldUpdateId !== this._worldUpdateId)
+
+        // @ifdef DEBUG
+        ASSERT(lt.valid(), 'Invalid local transform, property is set incorrectly somewhere...');
+        // @endif
+
+        if (this.parent && this._lastParentUpdateID !== this.parent.updateID)
         {
-            wt.copy(this._lt);
-            this._worldUpdateId++;
-            this._cachedWorldUpdateId = this._worldUpdateId;
+            const pt = this.parent._wt;
+
+            // multiply the parent matrix with the objects transform.
+            wt[0] = (lt[0] * pt[0]) + (lt[1] * pt[3]);
+            wt[1] = (lt[0] * pt[1]) + (lt[1] * pt[4]);
+            wt[3] = (lt[3] * pt[0]) + (lt[4] * pt[3]);
+            wt[4] = (lt[3] * pt[1]) + (lt[4] * pt[4]);
+            wt[6] = (lt[6] * pt[0]) + (lt[7] * pt[3]) + pt[6];
+            wt[7] = (lt[6] * pt[1]) + (lt[7] * pt[4]) + pt[7];
+
+            this._lastParentUpdateID = this.parent.updateID;
         }
 
         // @ifdef DEBUG
-        ASSERT(this._wt.valid(), 'Invalid world transform, property is set incorrectly somewhere...');
+        ASSERT(wt.valid(), 'Invalid world transform, property is set incorrectly somewhere...');
         // @endif
     }
 
