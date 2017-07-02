@@ -17,21 +17,18 @@ export default class Point extends UpdateComponent()
     {
         super();
 
-        /**
-         * The private tracker for the x value.
-         *
-         * @private
-         * @member {number}
-         */
-        this._x = x;
-
-        /**
-         * The private tracker for the y value.
-         *
-         * @private
-         * @member {number}
-         */
-        this._y = y;
+        if ((x.buffer || x) instanceof ArrayBuffer)
+        {
+            this.array = new Float64Array((x.buffer || x), y, 2);
+            this.array[0] = 0;
+            this.array[1] = 0;
+        }
+        else
+        {
+            this.array = new Float64Array(2);
+            this.array[0] = x;
+            this.array[1] = y;
+        }
     }
 
     /**
@@ -41,14 +38,14 @@ export default class Point extends UpdateComponent()
      */
     get x()
     {
-        return this._x;
+        return this.array[0];
     }
 
     set x(value) // eslint-disable-line require-jsdoc
     {
-        if (this._x !== value)
+        if (this.array[0] !== value)
         {
-            this._x = value;
+            this.array[0] = value;
             this.update();
         }
     }
@@ -60,14 +57,14 @@ export default class Point extends UpdateComponent()
      */
     get y()
     {
-        return this._y;
+        return this.array[1];
     }
 
     set y(value) // eslint-disable-line require-jsdoc
     {
-        if (this._y !== value)
+        if (this.array[1] !== value)
         {
-            this._y = value;
+            this.array[1] = value;
             this.update();
         }
     }
@@ -79,7 +76,7 @@ export default class Point extends UpdateComponent()
      */
     clone()
     {
-        return new Point(this._x, this._y);
+        return new Point(this.array[0], this.array[1]);
     }
 
     /**
@@ -89,7 +86,7 @@ export default class Point extends UpdateComponent()
      */
     copy(p)
     {
-        this.set(p._x, p._y);
+        this.set(p.array[0], p.array[1]);
     }
 
     /**
@@ -100,7 +97,7 @@ export default class Point extends UpdateComponent()
      */
     equals(p)
     {
-        return (p._x === this._x) && (p._y === this._y);
+        return (this.array[0] === p.array[0]) && (this.array[1] === p.array[1]);
     }
 
     /**
@@ -115,10 +112,10 @@ export default class Point extends UpdateComponent()
         const _x = x || 0;
         const _y = y || ((y !== 0) ? _x : 0);
 
-        if (this._x !== _x || this._y !== _y)
+        if (this.array[0] !== _x || this.array[1] !== _y)
         {
-            this._x = _x;
-            this._y = _y;
+            this.array[0] = _x;
+            this.array[1] = _y;
             this.update();
         }
     }

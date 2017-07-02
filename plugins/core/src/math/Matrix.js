@@ -46,16 +46,24 @@ export default class Matrix
      */
     constructor(a = 1, b = 0, c = 0, d = 1, tx = 0, ty = 0)
     {
-        this.array = new Float32Array(9);
-        this.array[0] = a;
-        this.array[1] = b;
-        this.array[2] = 0;
-        this.array[3] = c;
-        this.array[4] = d;
-        this.array[5] = 0;
-        this.array[6] = tx;
-        this.array[7] = ty;
-        this.array[8] = 1;
+        if ((a.buffer || a) instanceof ArrayBuffer)
+        {
+            this.array = new Float64Array((a.buffer || a), b, 9);
+            this.identity();
+        }
+        else
+        {
+            this.array = new Float64Array(9);
+            this.array[0] = a;
+            this.array[1] = b;
+            this.array[2] = 0;
+            this.array[3] = c;
+            this.array[4] = d;
+            this.array[5] = 0;
+            this.array[6] = tx;
+            this.array[7] = ty;
+            this.array[8] = 1;
+        }
     }
 
     /**
@@ -330,26 +338,27 @@ export default class Matrix
 
         if (delta < 0.00001)
         {
-            transform.rotation = skewY;
+            let rot = skewY;
 
             if (a < 0 && d >= 0)
             {
-                transform.rotation += (transform.rotation <= 0) ? Math.PI : -Math.PI;
+                rot += (transform.rotation <= 0) ? Math.PI : -Math.PI;
             }
 
-            transform.skew.x = transform.skew.y = 0;
+            transform.rotation = rot;
+            transform.skewX = transform.skewY = 0;
         }
         else
         {
-            transform.skew.x = skewX;
-            transform.skew.y = skewY;
+            transform.skewX = skewX;
+            transform.skewY = skewY;
         }
 
-        transform.scale.x = Math.sqrt((a * a) + (b * b));
-        transform.scale.y = Math.sqrt((c * c) + (d * d));
+        transform.scaleX = Math.sqrt((a * a) + (b * b));
+        transform.scaleY = Math.sqrt((c * c) + (d * d));
 
-        transform.position.x = this.tx;
-        transform.position.y = this.ty;
+        transform.x = this.tx;
+        transform.y = this.ty;
 
         return transform;
     }
@@ -395,10 +404,13 @@ export default class Matrix
     {
         this.array[0] = 1;
         this.array[1] = 0;
+        this.array[2] = 0;
         this.array[3] = 0;
         this.array[4] = 1;
+        this.array[5] = 0;
         this.array[6] = 0;
         this.array[7] = 0;
+        this.array[8] = 1;
 
         return this;
     }
@@ -410,30 +422,82 @@ export default class Matrix
      */
     clone()
     {
-        return new Matrix(
-            this.array[0],
-            this.array[1],
-            this.array[3],
-            this.array[4],
-            this.array[6],
-            this.array[7]
-        );
+        const m = new Matrix();
+
+        m.copy(this);
+
+        return m;
     }
 
     /**
      * Changes the values of the given matrix to be the same as the ones in this matrix
      *
      * @param {PIXI.Matrix} matrix - The matrix to copy from.
-     * @return {PIXI.Matrix} This matrix. Good for chaining method calls.
+     * @return {PIXI.Matrix} Returns itself.
      */
     copy(matrix)
     {
+        // @ifdef DEBUG
+        ASSERT(matrix, 'Cannot copy from a non-existent matrix.');
+        // @endif
+
         this.array[0] = matrix.array[0];
         this.array[1] = matrix.array[1];
+        this.array[2] = matrix.array[2];
         this.array[3] = matrix.array[3];
         this.array[4] = matrix.array[4];
+        this.array[5] = matrix.array[5];
         this.array[6] = matrix.array[6];
         this.array[7] = matrix.array[7];
+        this.array[8] = matrix.array[8];
+
+        return this;
+    }
+
+    /**
+     * @param {Array|ArrayBufferView} out The array to copy into.
+     * @param {number} offset The offset
+     * @return {PIXI.Matrix} Returns itself.
+     */
+    copyToArray(out, offset = 0)
+    {
+        // @ifdef DEBUG
+        ASSERT(out && (out.length - offset) >= 9, 'Output array must have >= 9 elements after the given offset.');
+        // @endif
+
+        out[offset + 0] = this.array[0];
+        out[offset + 1] = this.array[1];
+        out[offset + 2] = this.array[2];
+        out[offset + 3] = this.array[3];
+        out[offset + 4] = this.array[4];
+        out[offset + 5] = this.array[5];
+        out[offset + 6] = this.array[6];
+        out[offset + 7] = this.array[7];
+        out[offset + 8] = this.array[8];
+
+        return this;
+    }
+
+    /**
+     * @param {Array|ArrayBufferView} array The array to copy from.
+     * @param {number} offset The offset
+     * @return {PIXI.Matrix} Returns itself.
+     */
+    copyFromArray(array, offset = 0)
+    {
+        // @ifdef DEBUG
+        ASSERT(array && (array.length - offset) >= 9, 'Input array must have >= 9 elements after the given offset.');
+        // @endif
+
+        this.array[0] = array[offset + 0];
+        this.array[1] = array[offset + 1];
+        this.array[2] = array[offset + 2];
+        this.array[3] = array[offset + 3];
+        this.array[4] = array[offset + 4];
+        this.array[5] = array[offset + 5];
+        this.array[6] = array[offset + 6];
+        this.array[7] = array[offset + 7];
+        this.array[8] = array[offset + 8];
 
         return this;
     }
