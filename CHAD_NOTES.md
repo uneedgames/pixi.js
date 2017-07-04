@@ -50,11 +50,11 @@ Pixi uses a hybrid ECS/ECM pattern using prototypal inheritance as the mechanism
 To explain the patterns used in Pixi I need to define a few terms first. Many of these terms may seem
 familiar to you, but read carefully because they may be different than you expect.
 
-- `Manager` - A Manager is responsible for the lifetime and functionality of some object(s).
-    Generally the managed object(s) can only be created by the manager, is stored in the manager, and is
-    accessed only through the manager. Additionally the manager can provide useful functionality around a feature.
-    It provides a centralized implementation of a specific feature, or the utilities/state necessary for that feature.
-    * Example: The `ContextManager` creates/destroys a context, and handles context lost/restored events. It manages the WebGL context object.
+- `Provider` - A Provider (short for WebGL Feature Provider) provides functionality related to a WebGL feature.
+    It provides a centralized implementation of a specific feature, including the utilities, state, and managed
+    objects necessary for that feature to operate. Generally the object(s) managed by the provider are created by
+    the provider, stored in the provider, and are accessed through the manager
+    * Example: The `ContextProvider` creates/destroys a context, and handles context lost/restored events. It manages the WebGL context object.
     * Example: The `TextureManager` creates/destroys GL Textures and provides an interface for uploading texture data to the GPU.
 - `System` - A System is responsible for the functionality of an array of objects and the interactions between
     them, managers, and other systems. It does not create, destroy, or store these objects; but instead the objects are

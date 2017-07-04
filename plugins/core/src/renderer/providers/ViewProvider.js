@@ -1,15 +1,16 @@
+import Signal from 'mini-signals';
 import Renderer from '../Renderer';
-import Manager from '../Manager';
+import Provider from '../Provider';
 import { hex2string, hex2rgb } from '../../utils';
 import { Rectangle } from '../../math';
 
 /**
  * @class
  */
-export default class ViewManager extends Manager
+export default class ViewProvider extends Provider
 {
     /**
-     * @param {Renderer} renderer The renderer this Manager works for.
+     * @param {Renderer} renderer The renderer this Provider works for.
      */
     constructor(renderer)
     {
@@ -56,6 +57,14 @@ export default class ViewManager extends Manager
          * @member {string}
          */
         this._backgroundColorString = '#000000';
+
+        /**
+         * Dispatched after the view is resized.
+         *
+         * @private
+         * @member {string}
+         */
+        this.onResize = new Signal();
 
         // run bg color setter
         this.backgroundColor = renderer.options.backgroundColor || this._backgroundColor;
@@ -121,11 +130,13 @@ export default class ViewManager extends Manager
         this.canvas.width = screenWidth * this.options.resolution;
         this.canvas.height = screenHeight * this.options.resolution;
 
-        if (this.options.autoResize)
+        if (this.options.setCanvasStyleOnResize)
         {
             this.canvas.style.width = `${screenWidth}px`;
             this.canvas.style.height = `${screenHeight}px`;
         }
+
+        this.onResize.dispatch();
     }
 
     /**
@@ -152,4 +163,4 @@ export default class ViewManager extends Manager
     }
 }
 
-Renderer.addDefaultManager(ViewManager, 'view');
+Renderer.addDefaultProvider(ViewProvider, 'view');

@@ -1,5 +1,5 @@
 import Renderer from '../Renderer';
-import Manager from '../Manager';
+import Provider from '../Provider';
 import createContext from '../../utils/createContext';
 
 // @ifdef DEBUG
@@ -10,10 +10,10 @@ import { ASSERT } from '@pixi/debug';
  * @class
  * @mixes ContextAwareComponent
  */
-export default class ContextManager extends Manager
+export default class ContextProvider extends Provider
 {
     /**
-     * @param {Renderer} renderer The renderer this Manager works for.
+     * @param {Renderer} renderer The renderer this Provider works for.
      */
     constructor(renderer)
     {
@@ -79,7 +79,7 @@ export default class ContextManager extends Manager
     }
 
     /**
-     * Called when the manager is destroyed.
+     * Called when the Provider is destroyed.
      *
      */
     destroy()
@@ -135,7 +135,7 @@ export default class ContextManager extends Manager
     }
 
     /**
-     * Initializes the context manager based on an existing context.
+     * Initializes the context provider based on an existing context.
      *
      * @private
      * @param {WebGLRenderingContext} gl The context
@@ -147,7 +147,7 @@ export default class ContextManager extends Manager
     }
 
     /**
-     * Create a new context for the context manager based on the provided options.
+     * Create a new context for the context provider based on the provided options.
      *
      * @private
      * @param {WebGLRenderingContext} options Options for new context creation.
@@ -189,4 +189,4 @@ export default class ContextManager extends Manager
     }
 }
 
-Renderer.addDefaultManager(ContextManager, 'context');
+Renderer.addDefaultProvider(ContextProvider, 'context');

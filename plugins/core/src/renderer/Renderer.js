@@ -24,11 +24,6 @@ import { RENDERER_TYPE } from '../../const';
 import UniformGroup from '../../shader/UniformGroup';
 import { Rectangle, Matrix } from '../../math';
 
-
-
-
-const defaultManagers = {};
-const defaultSystems = [];
 const tempMatrix = new Matrix();
 
 /**
@@ -72,17 +67,6 @@ export default class Renderer extends DestroyComponent(UidComponent(ECS))
          */
         this.options = options;
 
-        // stuff, TODO: Docs
-        this.globalUniforms = new UniformGroup({ projectionMatrix: new Matrix() }, false);
-        this.renderingToScreen = true;
-
-        /**
-         * Tracks the blend modes useful for this renderer.
-         *
-         * @member {object<string, mixed>}
-         */
-        this.blendModes = null;
-
         /**
          * This temporary display object used as the parent of the currently being rendered item
          *
@@ -96,9 +80,8 @@ export default class Renderer extends DestroyComponent(UidComponent(ECS))
         // signals, TODO: Docs
         this.onContextChange = new Signal();
         this.onReset = new Signal();
-        this.onPostRender = new Signal();
-        this.onPreRender = new Signal();
-        this.onResize = new Signal();
+        this.onBeforeRender = new Signal();
+        this.onAfterRender = new Signal();
 
         // Replace with managers
         this.addSystem(MaskSystem, 'mask')
@@ -115,61 +98,65 @@ export default class Renderer extends DestroyComponent(UidComponent(ECS))
             .addSystem(RenderTextureSystem, 'renderTexture')
             .addSystem(BatchSystem,'batch')
 
+        // Bindings for our private events
         this._onContextChangeBinding = this.onContextChange.add(this._initContext, this);
 
-        // create and add the default managers
-        for (const k in defaultManagers)
+        // create and add the default providers
+        for (const k in Renderer._defaultProviders)
         {
-            this[k] = new (defaultManagers.Manager)(this);
+            this[k] = new (Renderer._defaultProviders[k])(this);
         }
 
         // create and add the default systems
-        for (let i = 0; i < defaultSystems.length; ++i)
+        for (let i = 0; i < Renderer._defaultSystems.length; ++i)
         {
-            const system = new defaultSystems[i](this);
+            const system = new Renderer._defaultSystems[i](this);
 
             this.addSystem(system);
         }
 
+        // initialize the context
         this._initContext();
     }
 
     /**
-     * Adds a manager that will be created automatically when a renderer instance is created.
+     * Adds a provider that will be created automatically when a renderer instance is created.
      *
-     * Note: Calling this function registers a manager to be automatically added in renderers
+     * Note: Calling this function registers a provider to be automatically added in renderers
      * that you create *after* calling this. If you call this after creating a renderer, the
-     * already created renderer will *not* create this manager automatically.
+     * already created renderer will *not* create this provider automatically.
      *
-     * @param {Manager} Manager The manager class to add (**not** an instance, but the class itself)
-     * @param {string} [name] The name of the manager to use as the property name on the Renderer. If not
-     *  specified, falls back to Manager._name, and then falls back to Manager.name.
+     * @param {Provider} Provider The provider class to add (**not** an instance, but the class itself)
+     * @param {string} [name] The name of the provider to use as the property name on the Renderer. If not
+     *  specified, falls back to Provider._name, and then falls back to Provider.name.
      */
-    static addDefaultManager(Manager, name)
+    static addDefaultProvider(Provider, name)
     {
-        name = name || Manager._name || Manager.name;
+        name = name || Provider._name || Provider.name;
 
-        if (defaultManagers[name])
+        // @ifdef DEBUG
+        if (Renderer._defaultProviders[name])
         {
-            throw new Error(`Manager name (${name}) already registered as a default manager.`);
+            console.warn(`Overwriting existing provider using name: ${name}.`); // eslint-disable-line no-console
         }
+        // @endif
 
-        defaultManagers[name] = Manager;
+        Renderer._defaultProviders[name] = Provider;
     }
 
     /**
-     * Removes a manager so that it will no longer be created automatically when a renderer
+     * Removes a provider so that it will no longer be created automatically when a renderer
      * instance is created.
      *
-     * Note: Calling this function unregisters a manager from being automatically added in renderers
+     * Note: Calling this function unregisters a provider from being automatically added in renderers
      * that you create *after* calling this. If you call this after creating a renderer, the
-     * already created renderer may contain this manager already.
+     * already created renderer may contain this provider already.
      *
-     * @param {string} name The name of the manager class to remove
+     * @param {string} name The name of the provider class to remove
      */
-    static removeDefaultManager(name)
+    static removeDefaultProvider(name)
     {
-        delete defaultManagers[name];
+        delete Renderer._defaultProviders[name];
     }
 
     /**
@@ -225,13 +212,25 @@ export default class Renderer extends DestroyComponent(UidComponent(ECS))
     }
 
     /**
-     * Sorts the systems by priority. If you change a system's priority after adding
-     * it to the renderer then you will need to call this for it to be properly sorted.
+     * Sorts the systems each entity has assigned to it by priority. If you change a system's priority
+     * after adding it to the renderer then you will need to call this for it to be properly sorted.
      *
+     * Warning: This call can be expensive with large numbers of entities and/or systems.
+     * Try not to call it very often. This method is `O(mn log n)`, where `n` is the
+     * number of entities and `m` is the number of systems in the ECS world.
+     *
+     * @return {Renderer} Returns itself.
      */
     sortSystems()
     {
-        this.systems.sort(compareSystemsPriority);
+        for (let i = 0; i < this.entities.length; ++i)
+        {
+            const entity = this.entities[i];
+
+            entity.systems.sort(compareSystemsPriority);
+        }
+
+        return this;
     }
 
     /**
@@ -239,20 +238,27 @@ export default class Renderer extends DestroyComponent(UidComponent(ECS))
      * entity's priority after adding it to the renderer then you will need to call
      * this for it to take effect.
      *
+     * Warning: This call can be expensive with large numbers of entities.
+     * Try not to call it very often. This method is `O(n log n)`, where `n` is the
+     * number of entities.
+     *
+     * @return {Renderer} Returns itself.
      */
     sortEntities()
     {
         this.entities.sort(compareRenderPriority);
+
+        return this;
     }
 
     /**
      * Renders the entities to the render target.
      *
-     * @param {RenderTarget} target - The target to render to, defaults to the screen.
-     * @param {boolean} clear - Should we clear the screen before rendering?
-     * @param {Matrix2d} transform - An optional matrix transform to apply for this render.
+     * @param {GLFramebuffer} framebuffer The framebuffer to render to, `null` means to render to screen.
+     * @param {boolean} clear Should we clear the screen before rendering?
+     * @return {Renderer} Returns itself.
      */
-    render(target = this.screen, clear = this.clearBeforeRender, transform = null)
+    render(framebuffer, clear = this.clearBeforeRender)
     {
         // no point rendering if our context has been blown up!
         if (this.context.isLost)
@@ -260,55 +266,27 @@ export default class Renderer extends DestroyComponent(UidComponent(ECS))
             return;
         }
 
-        this.renderingToScreen = !renderTexture;
-        this.onPreRender.dispatch();
+        // tell everyone we are about to render
+        this.onBeforeRender.dispatch(framebuffer, clear);
 
-        if (!skipUpdateTransform)
-        {
-            // update the scene graph
-            const cacheParent = displayObject.parent;
+        // iterate all the entities and have each of their systems process them
+        this.update();
 
-            displayObject.parent = this._tempDisplayObjectParent;
-            displayObject.updateTransform();
-            displayObject.parent = cacheParent;
-        }
+        // tell everyone we finished
+        this.onAfterRender.dispatch(framebuffer);
 
-        this.renderTexture.bind(renderTexture);
-        this.batch.currentRenderer.start();
-
-        if (clear !== undefined ? clear : this.options.clearBeforeRender)
-        {
-            this.renderTexture.clear();
-        }
-
-        displayObject.renderWebGL(this);
-
-        this.batch.currentRenderer.flush();
-
-        // tell everyone we updated
-        this.onPostRender.dispatch();
-    }
-
-    /**
-     * Resizes the webGL view to the specified width and height.
-     *
-     * @param {number} screenWidth - the new width of the screen
-     * @param {number} screenHeight - the new height of the screen
-     */
-    resize(screenWidth, screenHeight)
-    {
-        SystemRenderer.prototype.resize.call(this, screenWidth, screenHeight);
-        this.runners.resize.run(screenWidth, screenHeight);
+        return this;
     }
 
     /**
      * Resets the WebGL state so you can render things however you fancy!
      *
-     * @return {PIXI.WebGLRenderer} Returns itself.
+     * @return {Renderer} Returns itself.
      */
     reset()
     {
-        this.runners.reset.run();
+        this.onReset.dispatch(this);
+
         return this;
     }
 
@@ -364,7 +342,7 @@ export default class Renderer extends DestroyComponent(UidComponent(ECS))
      */
     _initContext()
     {
-        const gl = this.gl;
+        const gl = this.context.gl;
         const maxTextures = gl.getParameter(gl.MAX_TEXTURE_IMAGE_UNITS);
 
         this.boundTextures = new Array(maxTextures);
@@ -389,7 +367,7 @@ export default class Renderer extends DestroyComponent(UidComponent(ECS))
  * @property {HTMLCanvasElement} [canvas] The canvas to use as a view, optional
  * @property {boolean} [alpha] If the render view is transparent, default false. When set to true
  *  the browser will composit the canvas with dom elements behind.
- * @property {boolean} [autoResize] If the render view is automatically resized, default false
+ * @property {boolean} [setCanvasStyleOnResize] If set the style of the canvas is adjusted to have a size that matches the viewport.
  * @property {boolean} [antialias] sets antialias. If not available natively then FXAA
  *  antialiasing is used
  * @property {boolean} [forceFXAA] Forces FXAA antialiasing to be used over native.
@@ -407,7 +385,8 @@ export default class Renderer extends DestroyComponent(UidComponent(ECS))
  *  rendering, stopping pixel interpolation.
  * @property {boolean} [legacy] If true Pixi will aim to ensure compatibility
  *  with older / less advanced devices. If you experiance unexplained flickering try setting this to true.
- * @property {boolean} [sayHello] Should this renderer log hello? Only happens once if not set explicitly.
+ * @property {boolean} [sayHello] Should this renderer log hello? Only happens once if not set explicitly. WARNING: If
+ *  you set this to `false` there is a small chance that you may be a poophead.
  * @property {string} [options.powerPreference] - Parameter passed to webgl context, set to "high-performance"
  *  for devices with dual graphics card
  */
@@ -425,7 +404,7 @@ Renderer.defaultOptions = {
     height: 600,
     canvas: null,
     transparent: false,
-    autoResize: false,
+    setCanvasStyleOnResize: false,
     antialias: false,
     forceFXAA: false,
     stencil: false,
@@ -437,6 +416,24 @@ Renderer.defaultOptions = {
     legacy: false,
     sayHello: true,
 };
+
+/**
+ * The default providers that will be added to each instance of the a Renderer that is created.
+ *
+ * @private
+ * @static
+ * @memberof Renderer
+ */
+Renderer._defaultProviders = {};
+
+/**
+ * The default systems that will be added to each instance of the a Renderer that is created.
+ *
+ * @private
+ * @static
+ * @memberof Renderer
+ */
+Renderer._defaultSystems = [];
 
 /**
  * Lower is placed first
