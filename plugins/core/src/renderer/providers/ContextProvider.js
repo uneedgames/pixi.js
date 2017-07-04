@@ -1,3 +1,4 @@
+import Signal from 'mini-signals';
 import Renderer from '../Renderer';
 import Provider from '../Provider';
 import createContext from '../../utils/createContext';
@@ -7,8 +8,11 @@ import { ASSERT } from '@pixi/debug';
 // @endif
 
 /**
+ * The Context Provider handles created and managing the WebGLRenderingContext.
+ * It creates the context and watches it for loss/restored events.
+ *
  * @class
- * @mixes ContextAwareComponent
+ * @extends Provider
  */
 export default class ContextProvider extends Provider
 {
@@ -26,6 +30,12 @@ export default class ContextProvider extends Provider
          * @member {WebGLRenderingContext}
          */
         this.gl = null;
+
+        /**
+         * Dispatched when the context is created, and/or when it is restored.
+         *
+         */
+        this.onContextChange = new Signal();
 
         // bind to some signals
         this._onPostRenderBinding = this.renderer.onPostRender.add(this._onPostRender, this);
@@ -143,7 +153,7 @@ export default class ContextProvider extends Provider
     _initFromContext(gl)
     {
         this.gl = gl;
-        this.renderer.onContextChange.dispatch(gl);
+        this.onContextChange.dispatch(gl);
     }
 
     /**
@@ -182,7 +192,7 @@ export default class ContextProvider extends Provider
      */
     _handleContextRestored()
     {
-        this.renderer.onContextChange.dispatch(this.gl);
+        this.onContextChange.dispatch(this.gl);
 
         // TODO - tidy up textures?
         // this.textureSystem.removeAll();

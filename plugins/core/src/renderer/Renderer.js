@@ -78,16 +78,13 @@ export default class Renderer extends DestroyComponent(UidComponent(ECS))
         this._tempDisplayObjectParent = new Container();
 
         // signals, TODO: Docs
-        this.onContextChange = new Signal();
         this.onReset = new Signal();
         this.onBeforeRender = new Signal();
         this.onAfterRender = new Signal();
 
         // Replace with managers
         this.addSystem(MaskSystem, 'mask')
-            // .addSystem(ContextSystem, 'context')
             .addSystem(StateSystem, 'state')
-            .addSystem(ShaderSystem, 'shader')
             .addSystem(TextureSystem, 'texture')
             .addSystem(GeometrySystem, 'geometry')
             .addSystem(FramebufferSystem, 'framebuffer')
@@ -97,9 +94,6 @@ export default class Renderer extends DestroyComponent(UidComponent(ECS))
             .addSystem(FilterSystem, 'filter')
             .addSystem(RenderTextureSystem, 'renderTexture')
             .addSystem(BatchSystem,'batch')
-
-        // Bindings for our private events
-        this._onContextChangeBinding = this.onContextChange.add(this._initContext, this);
 
         // create and add the default providers
         for (const k in Renderer._defaultProviders)
@@ -114,9 +108,6 @@ export default class Renderer extends DestroyComponent(UidComponent(ECS))
 
             this.addSystem(system);
         }
-
-        // initialize the context
-        this._initContext();
     }
 
     /**
@@ -263,7 +254,7 @@ export default class Renderer extends DestroyComponent(UidComponent(ECS))
         // no point rendering if our context has been blown up!
         if (this.context.isLost)
         {
-            return;
+            return this;
         }
 
         // tell everyone we are about to render
@@ -333,27 +324,6 @@ export default class Renderer extends DestroyComponent(UidComponent(ECS))
         this.blendModes = null;
 
         this._tempDisplayObjectParent = null;
-    }
-
-    /**
-     * Creates the WebGL context
-     *
-     * @private
-     */
-    _initContext()
-    {
-        const gl = this.context.gl;
-        const maxTextures = gl.getParameter(gl.MAX_TEXTURE_IMAGE_UNITS);
-
-        this.boundTextures = new Array(maxTextures);
-        this.emptyTextures = new Array(maxTextures);
-
-        const tempObj = { _glTextures: {} };
-
-        for (let i = 0; i < maxTextures; i++)
-        {
-            this.boundTextures[i] = tempObj;
-        }
     }
 }
 

@@ -49,7 +49,9 @@ export default class GLProgram
     }
 
     /**
-     * Uses this shader
+     * Binds this GLProgram.
+     *
+     * @return {GLProgram} Returns itself.
      */
     bind()
     {
@@ -58,11 +60,14 @@ export default class GLProgram
         // @endif
 
         this.gl.useProgram(this.program);
+
+        return this;
     }
 
     /**
      * Deletes the program from the context and cache.
      *
+     * @return {GLProgram} Returns itself.
      */
     deleteProgram()
     {
@@ -71,6 +76,8 @@ export default class GLProgram
         // @endif
 
         this.gl.deleteProgram(this.program);
+
+        return this;
     }
 
     /**

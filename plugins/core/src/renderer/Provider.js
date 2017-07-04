@@ -19,24 +19,6 @@ export default class Provider extends DestroyComponent()
          * @member {Renderer}
          */
         this.renderer = renderer;
-
-        /**
-         * The binding for the context change signal.
-         *
-         * @private
-         * @member {SignalBinding}
-         */
-        this._onContextChangeBinding = this.renderer.onContextChange.add(this._onContextChange, this);
-    }
-
-    /**
-     * Generic method called when there is a WebGL context change.
-     *
-     * @protected
-     */
-    _onContextChange()
-    {
-        // do some codes init!
     }
 
     /**

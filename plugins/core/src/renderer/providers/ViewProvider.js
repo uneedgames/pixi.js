@@ -5,7 +5,11 @@ import { hex2string, hex2rgb } from '../../utils';
 import { Rectangle } from '../../math';
 
 /**
+ * The View Provider manages the underlying view (canvas) and handles the
+ * background color and sizing.
+ *
  * @class
+ * @extends Provider
  */
 export default class ViewProvider extends Provider
 {

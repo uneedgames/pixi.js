@@ -51,7 +51,7 @@ export default class Program extends UidComponent()
          *
          * @member {Object<string, number>}
          */
-        this.customAttributeLocations = options.customAttributeLocations || {};
+        this.attributeLocationMap = options.attributeLocations;
 
         /**
          * The attribute reflection data.
@@ -97,6 +97,22 @@ export default class Program extends UidComponent()
      */
 
     /**
+     * Creates a gl program from this Program.
+     *
+     * @param {WebGLRenderingContext} gl The rendering context to create a GLProgram for.
+     * @returns {GLProgram} The newly created program.
+     */
+    createGLProgram(gl)
+    {
+        return new GLProgram(
+            gl,
+            this.vertexSrc,
+            this.fragmentSrc,
+            this.attributeLocationMap
+        );
+    }
+
+    /**
      * Initialize our data members.
      *
      * @private
@@ -104,16 +120,32 @@ export default class Program extends UidComponent()
     _initialize()
     {
         // TODO (cengler): Cache this so we don't do this calculation repeatedly for the same sources
-        const reflectionProgram = new GLProgram(
-            Program.reflectionContext,
-            this.vertexSrc,
-            this.fragmentSrc,
-            this.customAttributeLocations
-        );
+        const reflectionProgram = this.createGLProgram(Program.reflectionContext);
 
         this.attributeData = Program.extractAttributeData(reflectionProgram);
         this.uniformData = Program.extractUniformData(reflectionProgram);
 
+        // setup the attribute location map
+        const attribMap = {};
+
+        for (const k in this.attributeData)
+        {
+            attribMap[k] = this.attributeData[k].location;
+        }
+
+        // values in here are the override values sent by the user.
+        if (this.attributeLocationMap)
+        {
+            for (const k in this.attributeLocationMap)
+            {
+                attribMap[k] = this.attributeLocationMap[k].location;
+            }
+        }
+
+        // store off the full location map
+        this.attributeLocationMap = attribMap;
+
+        // done with the reflection program, destroy it
         reflectionProgram.destroy();
     }
 
