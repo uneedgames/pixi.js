@@ -1,7 +1,7 @@
 import Signal from 'mini-signals';
 import Renderer from '../Renderer';
 import Provider from '../Provider';
-import { GLTexture } from '@pixi/gl';
+import { GLTexture, GLConstants } from '@pixi/gl';
 import { removeItems } from '../../../../utils';
 
 // @ifdef DEBUG
@@ -32,11 +32,11 @@ export default class TextureProvider extends Provider
         this.boundTextures = new Array(maxTextures);
 
         /**
-         * Empty texture instances.
+         * Empty texture instances by texture target.
          *
-         * @member {GLProgram[]}
+         * @member {Object<number,GLProgram>}
          */
-        this.emptyTextures = new Array(maxTextures);
+        this.emptyTexture = new GLTexture(this.renderer.context.gl);
 
         /**
          * Textures managed by this provider.
@@ -51,6 +51,8 @@ export default class TextureProvider extends Provider
          * @member {number}
          */
         this.currentLocation = -1;
+
+        this.resetTextureCube();
     }
 
     /**
@@ -58,29 +60,28 @@ export default class TextureProvider extends Provider
      *
      * @private
      */
-    contextChange()
+    resetTextureCube()
     {
-        const gl = this.gl = this.renderer.gl;
-        this.CONTEXT_UID = this.renderer.CONTEXT_UID;
+        const gl = this.renderer.context.gl;
 
-        // TODO move this.. to a nice make empty textures class..
-        this.emptyTextures = {}
+        this.emptyTexture.bind(gl.TEXTURE_CUBE_MAP);
 
-        this.emptyTextures[gl.TEXTURE_2D] = new GLTexture.fromData(this.gl, null, 1, 1);
-        this.emptyTextures[gl.TEXTURE_CUBE_MAP] = new GLTexture(this.gl);
+        const uploadOptions = {
+            target: gl.TEXTURE_CUBE_MAP_POSITIVE_X,
+            format: gl.RGBA,
+            type: gl.UNSIGNED_BYTE,
+            width: 1,
+            height: 1,
+        };
 
-        gl.bindTexture(gl.TEXTURE_CUBE_MAP, this.emptyTextures[gl.TEXTURE_CUBE_MAP].texture);
-
-        for (var i = 0; i < 6; i++)
+        for (
+            let target = gl.TEXTURE_CUBE_MAP_POSITIVE_X;
+            target <= gl.TEXTURE_CUBE_MAP_NEGATIVE_Z;
+            ++target
+        )
         {
-            gl.texImage2D(gl.TEXTURE_CUBE_MAP_POSITIVE_X + i, 0, gl.RGBA,  1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
-        }
-
-        gl.texParameteri(gl.TEXTURE_CUBE_MAP, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
-        gl.texParameteri(gl.TEXTURE_CUBE_MAP, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
-
-        for (var i = 0; i < this.boundTextures.length; i++) {
-            this.bind(null, i);
+            uploadOptions.target = target;
+            this.emptyTexture.uploadData(null, uploadOptions);
         }
     }
 

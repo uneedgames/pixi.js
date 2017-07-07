@@ -1,7 +1,5 @@
 // @ifdef DEBUG
 import { ASSERT } from '../debug';
-
-let FLOATING_POINT_AVAILABLE = false;
 // @endif
 
 /**
@@ -141,9 +139,12 @@ export default class GLTexture
     /**
      * Binds the texture
      *
-     * @param {number} location - The texture slot to fill.
+     * @param {GLenum} target The target to bind to. Defaults to TEXTURE_2D.
+     * @see GLConstants
+     * @param {number} location The texture slot to fill. If not set just binds to
+     * whatever the currently active location is.
      */
-    bind(location = -1)
+    bind(target, location = -1)
     {
         const gl = this.gl;
 
@@ -152,17 +153,27 @@ export default class GLTexture
             gl.activeTexture(gl.TEXTURE0 + location);
         }
 
-        gl.bindTexture(gl.TEXTURE_2D, this.texture);
+        gl.bindTexture(target || gl.TEXTURE_2D, this.texture);
     }
 
     /**
-     * Unbinds the texture
+     * Binds the texture
+     *
+     * @param {GLenum} target The target to bind to. Defaults to TEXTURE_2D.
+     * @see GLConstants
+     * @param {number} location The texture slot to fill. If not set just unbinds from
+     * whatever the currently active location is.
      */
-    unbind()
+    unbind(target, location = -1)
     {
         const gl = this.gl;
 
-        gl.bindTexture(gl.TEXTURE_2D, null);
+        if (location > -1)
+        {
+            gl.activeTexture(gl.TEXTURE0 + location);
+        }
+
+        gl.bindTexture(target || gl.TEXTURE_2D, null);
     }
 
     /**
@@ -173,20 +184,24 @@ export default class GLTexture
     setup(options)
     {
         const gl = this.gl;
+        const target = (options && options.target) || gl.TEXTURE_2D;
 
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, options.minFilter);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, options.magFilter);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, options.wrapS);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, options.wrapT);
+        gl.texParameteri(target, gl.TEXTURE_MIN_FILTER, options.minFilter);
+        gl.texParameteri(target, gl.TEXTURE_MAG_FILTER, options.magFilter);
+        gl.texParameteri(target, gl.TEXTURE_WRAP_S, options.wrapS);
+        gl.texParameteri(target, gl.TEXTURE_WRAP_T, options.wrapT);
     }
 
     /**
      * Generates mipmaps for this texture.
      *
+     * @param {GLenum} target The target to bind to. Defaults to TEXTURE_2D.
      */
-    generateMipmap()
+    generateMipmap(target)
     {
-        this.gl.generateMipmap(this.gl.TEXTURE_2D);
+        target = target || this.gl.TEXTURE_2D;
+
+        this.gl.generateMipmap(target);
     }
 
     /**
@@ -298,6 +313,15 @@ export default class GLTexture
  *
  * @interface GLTextureSetupOptions
  * @memberof GLTexture
+ */
+
+/**
+ * The texture target type of the texture.
+ *
+ * @memberof GLTextureSetupOptions
+ * @name target
+ * @type {GLenum}
+ * @see GLConstants
  */
 
 /**

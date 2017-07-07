@@ -30,8 +30,5 @@ export default class Provider extends DestroyComponent()
         super.destroy();
 
         this.renderer = null;
-
-        this._onContextChangeBinding.detach();
-        this._onContextChangeBinding = null;
     }
 }
