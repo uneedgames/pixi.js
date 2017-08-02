@@ -1,6 +1,6 @@
 {
-  "name": "pixi.js",
-  "version": "4.5.4",
+  "name": "@uneed/pixi.js",
+  "version": "4.5.4-UNEED",
   "description": "The HTML5 Creation Engine: Create beautiful digital content with the fastest, most flexible 2D WebGL renderer.",
   "author": "Mat Groves",
   "contributors": [
@@ -36,7 +36,10 @@
     "prebuild": "npm run lint",
     "build": "npm run dist",
     "predist": "rimraf dist/**",
+    "dist:all": "npm run dist && npm run dist:uneed && npm run dist:graphics",
     "dist": "pixify -d dist -n PIXI -o pixi -t babelify",
+    "dist:uneed": "pixify -d dist -n PIXI -o pixi.uneed -t babelify -s ./src/index.uneed.js",
+    "dist:graphics": "pixify -d dist -n PIXI -o pixi.graphics -t babelify -s ./src/index.graphics.js",
     "prelib": "rimraf lib/**",
     "lib": "babel src --out-dir lib -s",
     "predocs": "rimraf docs/**",

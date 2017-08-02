@@ -6,11 +6,11 @@ export * from './core';
 
 // export libs
 import deprecation from './deprecation';
-import * as accessibility from './accessibility';
+// import * as accessibility from './accessibility';
 import * as extract from './extract';
 import * as extras from './extras';
 import * as filters from './filters';
-import * as interaction from './interaction';
+// import * as interaction from './interaction';
 import * as loaders from './loaders';
 import * as mesh from './mesh';
 import * as particles from './particles';
@@ -29,11 +29,11 @@ utils.mixins.performMixins();
 const loader = loaders.shared || null;
 
 export {
-    accessibility,
+    // accessibility,
     extract,
     extras,
     filters,
-    interaction,
+    // interaction,
     loaders,
     mesh,
     particles,

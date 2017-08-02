@@ -1158,7 +1158,7 @@ export default function deprecation(core)
         });
     }
 
-    if (interaction.interactiveTarget)
+    if (interaction && interaction.interactiveTarget)
     {
         /**
          * @name PIXI.interaction.interactiveTarget#defaultCursor
@@ -1182,7 +1182,7 @@ export default function deprecation(core)
         });
     }
 
-    if (interaction.InteractionManager)
+    if (interaction && interaction.InteractionManager)
     {
         /**
          * @name PIXI.interaction.InteractionManager#defaultCursorStyle
