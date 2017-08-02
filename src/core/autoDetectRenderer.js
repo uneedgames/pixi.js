@@ -1,4 +1,3 @@
-import * as utils from './utils';
 import CanvasRenderer from './renderers/canvas/CanvasRenderer';
 // import WebGLRenderer from './renderers/webgl/WebGLRenderer';
 
@@ -32,7 +31,7 @@ import CanvasRenderer from './renderers/canvas/CanvasRenderer';
  *  If you experience unexplained flickering try setting this to true. **webgl only**
  * @return {PIXI.WebGLRenderer|PIXI.CanvasRenderer} Returns WebGL renderer if available, otherwise CanvasRenderer
  */
-export function autoDetectRenderer(options, arg1, arg2, arg3)
+export function autoDetectRenderer(options, arg1, arg2)
 {
     // Backward-compatible support for noWebGL option
     // let forceCanvas = options && options.forceCanvas;

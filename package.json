@@ -1,6 +1,6 @@
 {
   "name": "@uneed/pixi.js",
-  "version": "4.5.4-UNEED",
+  "version": "4.5.4",
   "description": "The HTML5 Creation Engine: Create beautiful digital content with the fastest, most flexible 2D WebGL renderer.",
   "author": "Mat Groves",
   "contributors": [
@@ -9,7 +9,7 @@
     "Chad Engler <chad@pantherdev.com>",
     "Richard Davey <rdavey@gmail.com>"
   ],
-  "main": "./lib/index.js",
+  "main": "./lib/index.uneed.js",
   "homepage": "http://goodboydigital.com/",
   "bugs": "https://github.com/pixijs/pixi.js/issues",
   "license": "MIT",
